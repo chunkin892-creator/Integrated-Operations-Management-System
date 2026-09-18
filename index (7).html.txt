@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小巴司機月曆排更與薪酬核算系統</title>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="shared.js"></script>
+<style>
+:root{--bg:#f1f5f9;--card-bg:#fff;--text:#1e293b;--sub-text:#64748b;--border:#cbd5e1;--cal-day-bg:#fff;--cal-empty-bg:#f8fafc;--holiday-bg:#fee2e2;--holiday-border:#fca5a5;--holiday-text:#991b1b;--summary-box-bg:#f8fafc;--overlay-bg:rgba(0,0,0,.6);}
+[data-theme="dark"]{--bg:#0f172a;--card-bg:#1e293b;--text:#f8fafc;--sub-text:#94a3b8;--border:#334155;--cal-day-bg:#1e293b;--cal-empty-bg:#0f172a;--holiday-bg:#451a1a;--holiday-border:#7f1d1d;--holiday-text:#fca5a5;--summary-box-bg:#0f172a;--overlay-bg:rgba(0,0,0,.8);}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft JhengHei",sans-serif;transition:background-color .2s,color .2s;}
+body{background-color:var(--bg);margin:0;padding:16px;color:var(--text);}
+.container{max-width:1200px;margin:0 auto;}
+.card{background:var(--card-bg);border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);border:1px solid var(--border);}
+.top-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;}
+.auth-section{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.theme-btn{background:var(--summary-box-bg);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:20px;font-weight:bold;cursor:pointer;}
+.control-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+label{font-size:13px;font-weight:bold;color:var(--sub-text);}
+input,select{padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none;background:var(--card-bg);color:var(--text);}
+.export-box{background:var(--summary-box-bg);padding:16px;border-radius:10px;border:1px solid var(--border);margin-top:10px;}
+.export-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:10px;}
+.action-card{background:var(--card-bg);padding:12px;border-radius:8px;border:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+.btn{color:#fff;border:none;padding:10px 14px;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn:disabled{opacity:.6;cursor:not-allowed;}
+.btn-google{background:#4285f4;}
+.btn-week{background:#059669;}
+.btn-half{background:#2563eb;}
+.btn-month{background:#7c3aed;}
+.btn-logout{background:#dc2626;padding:6px 12px;font-size:13px;border-radius:6px;}
+.status-badge{font-size:12px;padding:4px 8px;border-radius:20px;font-weight:bold;display:inline-flex;align-items:center;gap:4px;}
+.status-online{background:#dcfce7;color:#15803d;border:1px solid #86efac;}
+.status-syncing{background:#fef9c3;color:#854d0e;border:1px solid #fde047;}
+.status-offline{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:20px;}
+.summary-box{background:var(--summary-box-bg);border-radius:10px;padding:16px;border:1px solid var(--border);border-top:4px solid #1e40af;}
+.summary-name{font-size:16px;font-weight:bold;margin-bottom:8px;color:var(--text);}
+.stat-row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px;}
+.stat-val{font-weight:bold;color:var(--text);}
+.stat-wage{color:#10b981;font-weight:bold;}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+.cal-header{background:#1e40af;color:#fff;text-align:center;font-weight:bold;padding:10px 4px;border-radius:6px;font-size:15px;}
+.cal-day{background:var(--cal-day-bg);border:1px solid var(--border);border-radius:8px;min-height:130px;padding:8px;display:flex;flex-direction:column;gap:4px;position:relative;cursor:pointer;}
+.cal-day:hover{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.2);}
+.cal-day.empty{background:var(--cal-empty-bg);border-style:dashed;cursor:default;}
+.cal-day.holiday{background:var(--holiday-bg);border-color:var(--holiday-border);}
+.day-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+.day-num{font-weight:bold;font-size:15px;}
+.holiday-tag{background:#ef4444;color:#fff;font-size:11px;padding:1px 5px;border-radius:4px;font-weight:bold;}
+.edit-hint{font-size:10px;color:var(--sub-text);background:rgba(0,0,0,.05);padding:1px 4px;border-radius:3px;}
+.shift-block{font-size:12px;padding:4px 6px;border-radius:4px;line-height:1.3;}
+.shift-m{background:#dbeafe;color:#1e40af;border-left:3px solid #1e40af;}
+.shift-n{background:#e0e7ff;color:#3730a3;border-left:3px solid #3730a3;}
+.shift-s{background:#fce7f3;color:#9d174d;border-left:3px solid #9d174d;}
+.shift-custom{background:#fef3c7;color:#92400e;border-left:3px solid #f59e0b;}
+[data-theme="dark"] .shift-m{background:#172554;color:#93c5fd;}
+[data-theme="dark"] .shift-n{background:#1e1b4b;color:#a5b4fc;}
+[data-theme="dark"] .shift-s{background:#500724;color:#f9a8d4;}
+[data-theme="dark"] .shift-custom{background:#451a03;color:#fde68a;}
+.day-footer{margin-top:auto;font-size:11px;color:var(--sub-text);text-align:right;font-weight:bold;}
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:999;justify-content:center;align-items:center;padding:16px;}
+.modal{background:var(--card-bg);border-radius:12px;max-width:500px;width:100%;padding:20px;border:1px solid var(--border);}
+.modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:16px;}
+.modal-body{display:flex;flex-direction:column;gap:12px;max-height:75vh;overflow-y:auto;}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;border-top:1px solid var(--border);padding-top:12px;}
+.loading-overlay{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:9999;justify-content:center;align-items:center;flex-direction:column;color:#fff;backdrop-filter:blur(4px);}
+.loading-overlay.active{display:flex;}
+.loading-spinner{width:52px;height:52px;border:5px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite;margin-bottom:16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:15px;font-weight:700;}
+@media (max-width:768px){.calendar-grid{grid-template-columns:repeat(1,1fr);}.cal-header,.cal-day.empty{display:none;}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div><div class="loading-text" id="loadingText">處理中...</div></div>
+
+<div class="container">
+  <div class="card">
+    <div class="top-bar">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <h2 style="margin:0;">🚐 小巴司機月曆排更與薪酬核算系統</h2>
+        <span id="cloudStatus" class="status-badge status-online">🟢 雲端已連線</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 深色模式</button>
+        <div class="auth-section" id="authSection"><button class="btn btn-google" onclick="loginWithGoogle()">🔑 Google 帳戶登入</button></div>
+        <div id="userProfile" style="display:none;align-items:center;gap:8px;">
+          <span id="userName" style="font-size:14px;font-weight:bold;color:#10b981;">👤 已登入</span>
+          <button class="btn btn-logout" onclick="logout()">登出</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="control-panel">
+      <div class="form-group"><label>📅 選擇年份月份</label><input type="month" id="selectMonth" onchange="loadMonthData()"></div>
+      <div class="form-group"><label>💰 每小時時薪 (HKD)</label><input type="number" id="hourlyRate" value="75" min="0" onchange="recalculateAll()"></div>
+      <div class="form-group"><label>🌅 早更固定司機 (一至五)</label><input type="text" id="driverMorning" value="黃有嬌" onchange="onDriverConfigChange()"></div>
+      <div class="form-group"><label>🌃 夜更固定司機 (一至五)</label><input type="text" id="driverNight" value="張耀輝" onchange="onDriverConfigChange()"></div>
+      <div class="form-group"><label>🚩 特更/假日司機 (六早/日/紅日)</label><input type="text" id="driverSpecial" value="吳惠明" onchange="onDriverConfigChange()"></div>
+      <div class="form-group"><label>🔄 首個週六夜更輪值司機</label><select id="firstSatDriver" onchange="onDriverConfigChange()"></select></div>
+    </div>
+
+    <div class="export-box">
+      <h3 style="margin-top:0;margin-bottom:8px;">📥 選擇 Excel 匯出模式 (標準 XLSX 格式)</h3>
+      <div class="export-actions">
+        <div class="action-card">
+          <label>1. 每個星期輸出：</label>
+          <select id="weekSelect"><option value="1">第 1 週 (1號 - 7號)</option><option value="2">第 2 週 (8號 - 14號)</option><option value="3">第 3 週 (15號 - 21號)</option><option value="4">第 4 週 (22號 - 28號)</option><option value="5">第 5 週 (29號 - 月尾)</option></select>
+          <button class="btn btn-week export-btn" onclick="exportRealXlsx('week')">📊 匯出該星期 Excel (.xlsx)</button>
+        </div>
+        <div class="action-card">
+          <label>2. 每半個月輸出：</label>
+          <select id="halfSelect"><option value="1">上半月 (1號 至 15號)</option><option value="2">下半月 (16號 至 月尾)</option></select>
+          <button class="btn btn-half export-btn" onclick="exportRealXlsx('half')">📊 匯出半月 Excel (.xlsx)</button>
+        </div>
+        <div class="action-card" style="justify-content:space-between;">
+          <label>3. 一個月完整輸出：</label>
+          <div style="font-size:13px;color:var(--sub-text);">輸出全月所有天數及薪酬結算總表。</div>
+          <button class="btn btn-month export-btn" onclick="exportRealXlsx('month')">📊 匯出全月 Excel (.xlsx)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📈 工時與薪酬三階段匯總 (上半月 / 下半月 / 全月)</h3>
+    <div class="summary-grid" id="summaryGrid"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <h3 style="margin:0;">📅 排更月曆表 (點擊任何一日格仔可直接修改更次/司機/工時)</h3>
+      <button class="btn" style="background:#dc2626;padding:6px 12px;font-size:13px;" onclick="resetToDefaultRoster()">🔄 按上方司機名重設全月更表</button>
+    </div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 style="margin:0;" id="modalDateTitle">✏️ 修改排更資料</h3>
+      <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text);" onclick="closeEditModal()">✖</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editDayNum">
+      <div class="form-group"><label>節日 / 假期備註</label><input type="text" id="editHolidayName" placeholder="例如：農曆年初一、包車、維修"></div>
+      <div style="background:var(--summary-box-bg);padding:10px;border-radius:8px;border:1px solid var(--border);">
+        <h4 style="margin:0 0 8px 0;color:#1e40af;">🌅 早更設定</h4>
+        <div class="form-group"><label>司機姓名</label><input type="text" id="editMDriver"></div>
+        <div class="form-group"><label>開工時間說明</label><input type="text" id="editMTime"></div>
+        <div class="form-group"><label>早更實際工時 (小時)</label><input type="number" id="editMHours" step="0.5" min="0"></div>
+      </div>
+      <div style="background:var(--summary-box-bg);padding:10px;border-radius:8px;border:1px solid var(--border);">
+        <h4 style="margin:0 0 8px 0;color:#9d174d;">🌃 夜更 / 全更設定</h4>
+        <div class="form-group"><label>司機姓名</label><input type="text" id="editNDriver"></div>
+        <div class="form-group"><label>開工時間說明</label><input type="text" id="editNTime"></div>
+        <div class="form-group"><label>夜更/全更實際工時 (小時)</label><input type="number" id="editNHours" step="0.5" min="0"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:#64748b;" onclick="closeEditModal()">取消</button>
+      <button class="btn btn-week" onclick="saveDayEdit()">💾 儲存修改並同步雲端</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig={apiKey:"AIzaSyANWLqV5bIFfMX_-byunnEBQ-gZmSn1cj4",authDomain:"driver-s-shift-report.firebaseapp.com",databaseURL:"https://driver-s-shift-report-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"driver-s-shift-report",storageBucket:"driver-s-shift-report.firebasestorage.app",messagingSenderId:"790331468274",appId:"1:790331468274:web:a0cecd6a8d5f8e157ba36b",measurementId:"G-JZSZKCSS27"};
+let auth=null,db=null;
+try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);auth=firebase.auth();db=firebase.database();}catch(err){console.error('Firebase 初始化失敗：',err);}
+function safeGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function safeSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function escapeHtml(s){if(s===null||s===undefined)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function showLoading(t){const el=document.getElementById('loadingOverlay');if(!el)return;document.getElementById('loadingText').textContent=t||'處理中...';el.classList.add('active');}
+function hideLoading(){const el=document.getElementById('loadingOverlay');if(el)el.classList.remove('active');}
+const HK_HOLIDAYS={"2026-01-01":"元旦","2026-02-17":"農曆年初一","2026-02-18":"農曆年初二","2026-02-19":"農曆年初三","2026-04-03":"耶穌受難節","2026-04-04":"清明節","2026-04-06":"復活節星期一","2026-05-01":"勞動節","2026-05-24":"佛誕","2026-06-19":"端午節","2026-07-01":"特區紀念日","2026-09-26":"中秋節翌日","2026-10-01":"國慶日","2026-10-19":"重陽節","2026-12-25":"聖誕節","2026-12-26":"節禮日","2027-01-01":"元旦","2027-02-06":"農曆年初一","2027-02-07":"農曆年初二","2027-02-08":"農曆年初三","2027-03-26":"耶穌受難節","2027-03-27":"清明節","2027-03-29":"復活節星期一","2027-05-01":"勞動節","2027-05-13":"佛誕","2027-06-09":"端午節","2027-07-01":"特區紀念日","2027-09-16":"中秋節翌日","2027-10-01":"國慶日","2027-10-08":"重陽節","2027-12-25":"聖誕節","2027-12-26":"節禮日","2028-01-01":"元旦","2028-01-26":"農曆年初一","2028-01-27":"農曆年初二","2028-01-28":"農曆年初三","2028-04-14":"耶穌受難節","2028-04-15":"清明節","2028-04-17":"復活節星期一","2028-05-01":"勞動節","2028-05-02":"佛誕","2028-05-28":"端午節","2028-07-01":"特區紀念日","2028-10-04":"中秋節翌日","2028-10-01":"國慶日","2028-10-26":"重陽節","2028-12-25":"聖誕節","2028-12-26":"節禮日"};
+let currentCalculatedData=[],currentStats={},currentDbRef=null,currentDbListener=null;
+window.onload=function(){initTheme();const t=new Date();const yyyy=t.getFullYear(),mm=String(t.getMonth()+1).padStart(2,'0');document.getElementById('selectMonth').value=`${yyyy}-${mm}`;
+if(!auth||!db){updateStatus('🔴 Firebase 未初始化','offline');return;}
+auth.onAuthStateChanged(user=>{if(user)setAdminState(true,user.displayName||user.email);else setAdminState(false);},err=>console.error('Auth 錯誤：',err));
+updateSatDriverOptions();loadMonthData();document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEditModal();});};
+function loginWithGoogle(){if(!auth){alert('Firebase Auth 未初始化');return;}const p=new firebase.auth.GoogleAuthProvider();auth.signInWithPopup(p).then(r=>setAdminState(true,r.user.displayName||r.user.email)).catch(e=>alert("Google 登入失敗: "+e.message));}
+function setAdminState(s,name="管理員已登入"){document.getElementById('authSection').style.display=s?'none':'flex';document.getElementById('userProfile').style.display=s?'flex':'none';if(s)document.getElementById('userName').innerText=`👤 ${name}`;}
+function logout(){if(auth)auth.signOut().then(()=>setAdminState(false));}
+function initTheme(){const t=safeGet('minibus_theme')||'light';document.documentElement.setAttribute('data-theme',t);updateThemeBtn(t);}
+function toggleTheme(){const c=document.documentElement.getAttribute('data-theme')||'light';const n=c==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',n);safeSet('minibus_theme',n);updateThemeBtn(n);}
+function updateThemeBtn(t){document.getElementById('themeBtn').innerHTML=t==='dark'?'☀️ 淺色模式':'🌙 深色模式';}
+function updateStatus(text,type){const el=document.getElementById('cloudStatus');el.className=`status-badge status-${type}`;el.innerText=text;}
+function updateSatDriverOptions(){const dM=document.getElementById('driverMorning').value.trim()||'早更司機';const dN=document.getElementById('driverNight').value.trim()||'夜更司機';const ss=document.getElementById('firstSatDriver');if(!ss)return;const cv=ss.value;ss.innerHTML=`<option value="${escapeHtml(dM)}">${escapeHtml(dM)}</option><option value="${escapeHtml(dN)}">${escapeHtml(dN)}</option>`;if(cv===dN)ss.value=dN;else ss.value=dM;}
+function onDriverConfigChange(){updateSatDriverOptions();generateDefaultRoster();}
+function loadMonthData(){const mv=document.getElementById('selectMonth').value;if(!mv)return;if(currentDbRef&&currentDbListener){currentDbRef.off('value',currentDbListener);currentDbListener=null;}updateStatus('🟡 載入雲端數據中...','syncing');const ls=safeGet(`minibus_roster_${mv}`);if(ls){try{currentCalculatedData=JSON.parse(ls);recalculateAll();}catch(e){}}currentDbRef=db.ref(`rosters/${mv}`);currentDbListener=currentDbRef.on('value',snapshot=>{const data=snapshot.val();if(data&&Array.isArray(data)){currentCalculatedData=data;safeSet(`minibus_roster_${mv}`,JSON.stringify(data));recalculateAll();updateStatus('🟢 雲端已連線 (實時同步)','online');}else{generateDefaultRoster();}},err=>{console.error(err);updateStatus('🔴 雲端離線 (使用本地)','offline');});}
+function resetToDefaultRoster(){if(confirm('確定按現有司機設定重設全月更表？所有單日手動修改將被重設。'))generateDefaultRoster();}
+function generateDefaultRoster(){const mv=document.getElementById('selectMonth').value;if(!mv)return;const dM=document.getElementById('driverMorning').value.trim()||'早更司機';const dN=document.getElementById('driverNight').value.trim()||'夜更司機';const dS=document.getElementById('driverSpecial').value.trim()||'特更司機';const ss=document.getElementById('firstSatDriver');let sdt=ss?ss.value:dM;if(!sdt)sdt=dM;const[y,m]=mv.split('-').map(Number);const td=new Date(y,m,0).getDate();const wh=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];currentCalculatedData=[];for(let d=1;d<=td;d++){const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const dobj=new Date(y,m-1,d);const wd=dobj.getDay();const hn=HK_HOLIDAYS[ds];const ih=!!hn||wd===0;let rd={date:ds,dayNum:d,weekDayStr:wh[wd],holidayName:hn||(wd===0?'週日':''),isHoliday:ih,mDriver:'',mTime:'',mHours:0,nDriver:'',nTime:'',nHours:0,dailyHours:0,dailyWage:0};if(ih){rd.nDriver=dS;rd.nTime='08:00 - 19:00 (11小時)';rd.nHours=11;rd.dailyHours=11;}else if(wd===6){rd.mDriver=dS;rd.mTime='07:00 - 13:00 (6小時)';rd.mHours=6;rd.nDriver=sdt;rd.nTime='13:00 - 19:00 (6小時)';rd.nHours=6;rd.dailyHours=12;sdt=(sdt===dM)?dN:dM;}else{rd.mDriver=dM;rd.mTime='06:00 - 14:00 (8小時)';rd.mHours=8;rd.nDriver=dN;rd.nTime='14:00 - 21:00 (7小時)';rd.nHours=7;rd.dailyHours=15;}currentCalculatedData.push(rd);}saveAndRender();}
+function saveAndRender(){const mv=document.getElementById('selectMonth').value;if(!mv)return;safeSet(`minibus_roster_${mv}`,JSON.stringify(currentCalculatedData));updateStatus('🟡 雲端儲存中...','syncing');db.ref(`rosters/${mv}`).set(currentCalculatedData).then(()=>updateStatus('🟢 雲端已連線 (實時同步)','online')).catch(err=>{console.error(err);updateStatus('🔴 雲端儲存失敗 (保留本地)','offline');});recalculateAll();}
+function recalculateAll(){const rate=parseFloat(document.getElementById('hourlyRate').value)||75;currentStats={};currentCalculatedData.forEach(row=>{row.dailyHours=(parseFloat(row.mHours)||0)+(parseFloat(row.nHours)||0);row.dailyWage=row.dailyHours*rate;const fh=row.dayNum<=15;[{name:row.mDriver,h:parseFloat(row.mHours)||0},{name:row.nDriver,h:parseFloat(row.nHours)||0}].forEach(sh=>{if(sh.name&&sh.name.trim()!==''&&sh.name!=='-'){const sn=sh.name.trim();if(!currentStats[sn])currentStats[sn]={h1:0,h2:0,totalH:0};if(fh)currentStats[sn].h1+=sh.h;else currentStats[sn].h2+=sh.h;currentStats[sn].totalH+=sh.h;}});});renderCalendar();renderSummary(currentStats,rate);}
+function renderCalendar(){const mv=document.getElementById('selectMonth').value;if(!mv)return;const[y,m]=mv.split('-').map(Number);const fdw=new Date(y,m-1,1).getDay();const cg=document.getElementById('calendarGrid');cg.innerHTML='';const wh=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];wh.forEach(w=>{const h=document.createElement('div');h.className='cal-header';h.innerText=w;cg.appendChild(h);});for(let i=0;i<fdw;i++){const e=document.createElement('div');e.className='cal-day empty';cg.appendChild(e);}if(!currentCalculatedData.length){cg.innerHTML+='<p style="color:var(--sub-text);grid-column:1/-1;text-align:center;padding:20px;">暫無排更資料</p>';return;}const dM=document.getElementById('driverMorning').value.trim();const dN=document.getElementById('driverNight').value.trim();const dS=document.getElementById('driverSpecial').value.trim();currentCalculatedData.forEach(rd=>{const dc=document.createElement('div');dc.className=`cal-day ${rd.isHoliday?'holiday':''}`;dc.onclick=()=>openEditModal(rd.dayNum);const gdc=n=>{if(n===dM)return'shift-m';if(n===dN)return'shift-n';if(n===dS)return'shift-s';return'shift-custom';};let sh='';if(rd.mDriver&&rd.mHours>0)sh+=`<div class="shift-block ${gdc(rd.mDriver)}"><strong>早更: ${escapeHtml(rd.mDriver)}</strong><br>${escapeHtml(rd.mTime)} (${rd.mHours}h)</div>`;if(rd.nDriver&&rd.nHours>0)sh+=`<div class="shift-block ${gdc(rd.nDriver)}"><strong>${rd.isHoliday?'全更':'夜更'}: ${escapeHtml(rd.nDriver)}</strong><br>${escapeHtml(rd.nTime)} (${rd.nHours}h)</div>`;if(!sh)sh=`<div style="color:var(--sub-text);font-size:12px;padding:4px;">全日休息 / 無排更</div>`;dc.innerHTML=`<div class="day-top"><span class="day-num">${rd.dayNum}日 (${escapeHtml(rd.weekDayStr.replace('星期',''))})</span>${rd.holidayName?`<span class="holiday-tag">${escapeHtml(rd.holidayName)}</span>`:'<span class="edit-hint">✏️按此修改</span>'}</div>${sh}<div class="day-footer">共 ${rd.dailyHours} 小時 ($${rd.dailyWage})</div>`;cg.appendChild(dc);});}
+function renderSummary(stats,rate){const c=document.getElementById('summaryGrid');c.innerHTML='';if(Object.keys(stats).length===0){c.innerHTML='<p style="color:var(--sub-text);">尚無司機工時記錄</p>';return;}for(const[name,data]of Object.entries(stats)){const w1=data.h1*rate,w2=data.h2*rate,wt=data.totalH*rate;const b=document.createElement('div');b.className='summary-box';b.innerHTML=`<div class="summary-name">👤 ${escapeHtml(name)}</div><div class="stat-row"><span>上半月 (1-15號):</span> <span class="stat-val">${data.h1} 小時 (<span class="stat-wage">$${w1.toLocaleString()}</span>)</span></div><div class="stat-row"><span>下半月 (16-尾):</span> <span class="stat-val">${data.h2} 小時 (<span class="stat-wage">$${w2.toLocaleString()}</span>)</span></div><hr style="border:0;border-top:1px dashed var(--border);margin:8px 0;"><div class="stat-row" style="font-size:15px;"><span>全月總計:</span> <span class="stat-val">${data.totalH} 小時</span></div><div class="stat-row" style="font-size:15px;"><span>實發總人工:</span> <span class="stat-wage" style="font-size:16px;">$${wt.toLocaleString()}</span></div>`;c.appendChild(b);}}
+function openEditModal(dn){const r=currentCalculatedData.find(d=>d.dayNum===dn);if(!r)return;document.getElementById('editDayNum').value=dn;document.getElementById('modalDateTitle').innerText=`✏️ 修改 ${r.date} (${r.weekDayStr}) 排更`;document.getElementById('editHolidayName').value=r.holidayName||'';document.getElementById('editMDriver').value=r.mDriver||'';document.getElementById('editMTime').value=r.mTime||'';document.getElementById('editMHours').value=r.mHours||0;document.getElementById('editNDriver').value=r.nDriver||'';document.getElementById('editNTime').value=r.nTime||'';document.getElementById('editNHours').value=r.nHours||0;document.getElementById('editModal').style.display='flex';}
+function closeEditModal(){document.getElementById('editModal').style.display='none';}
+function saveDayEdit(){const dn=parseInt(document.getElementById('editDayNum').value);const r=currentCalculatedData.find(d=>d.dayNum===dn);if(!r)return;r.holidayName=document.getElementById('editHolidayName').value.trim();r.isHoliday=!!r.holidayName||r.weekDayStr==='星期日';r.mDriver=document.getElementById('editMDriver').value.trim();r.mTime=document.getElementById('editMTime').value.trim();const mh=parseFloat(document.getElementById('editMHours').value);r.mHours=(isNaN(mh)||mh<0)?0:mh;r.nDriver=document.getElementById('editNDriver').value.trim();r.nTime=document.getElementById('editNTime').value.trim();const nh=parseFloat(document.getElementById('editNHours').value);r.nHours=(isNaN(nh)||nh<0)?0:nh;closeEditModal();saveAndRender();}
+async function exportRealXlsx(mode){if(typeof ExcelJS==='undefined'){alert('ExcelJS 庫未載入成功');return;}if(typeof saveAs==='undefined'){alert('FileSaver 庫未載入成功');return;}if(!currentCalculatedData.length){alert('暫無排更資料可匯出。');return;}const mv=document.getElementById('selectMonth').value;if(!mv){alert('請先選擇月份');return;}const rate=parseFloat(document.getElementById('hourlyRate').value)||75;const[y,m]=mv.split('-').map(Number);const td=new Date(y,m,0).getDate();const bs=document.querySelectorAll('.export-btn');bs.forEach(b=>b.disabled=true);showLoading('正在建立 Excel 檔案...');try{let sd=1,ed=td,tt=`全月排更及薪酬總表 (1號 至 ${td}號)`;if(mode==='week'){const w=parseInt(document.getElementById('weekSelect').value);const wr={1:[1,Math.min(7,td)],2:[8,Math.min(14,td)],3:[15,Math.min(21,td)],4:[22,Math.min(28,td)],5:[29,td]};sd=wr[w][0];ed=wr[w][1];tt=`第 ${w} 週排更及薪酬表 (${sd}號 至 ${ed}號)`;}else if(mode==='half'){const h=document.getElementById('halfSelect').value;if(h==='1'){sd=1;ed=Math.min(15,td);tt=`上半月排更及薪酬表 (1號 至 15號)`;}else{sd=16;ed=td;tt=`下半月排更及薪酬表 (16號 至 ${td}號)`;}}const fd=currentCalculatedData.filter(d=>d.dayNum>=sd&&d.dayNum<=ed);const ss={};let tsh=0,tsw=0;fd.forEach(it=>{[{name:it.mDriver,h:it.mHours},{name:it.nDriver,h:it.nHours}].forEach(sh=>{if(sh.name&&sh.name.trim()!==''&&sh.name!=='-'){const sn=sh.name.trim();if(!ss[sn])ss[sn]=0;ss[sn]+=sh.h;}});tsh+=it.dailyHours;tsw+=it.dailyWage;});const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet(tt);ws.columns=[{width:14},{width:12},{width:16},{width:14},{width:22},{width:12},{width:14},{width:24},{width:12},{width:14},{width:18}];const bS={top:{style:'thin',color:{argb:'FFCBD5E1'}},left:{style:'thin',color:{argb:'FFCBD5E1'}},bottom:{style:'thin',color:{argb:'FFCBD5E1'}},right:{style:'thin',color:{argb:'FFCBD5E1'}}};ws.mergeCells('A1:K1');const tC=ws.getCell('A1');tC.value=`🚐 小巴司機 ${tt} (${mv}) - 時薪 HK$${rate}`;tC.font={name:'Microsoft JhengHei',size:15,bold:true,color:{argb:'FFFFFFFF'}};tC.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1B365D'}};tC.alignment={horizontal:'center',vertical:'middle'};ws.getRow(1).height=36;ws.mergeCells('A3:K3');const sH=ws.getCell('A3');sH.value=`【 司機本期薪酬與工時結算匯總 (${sd}號 至 ${ed}號) 】`;sH.font={name:'Microsoft JhengHei',size:12,bold:true,color:{argb:'FF1E293B'}};sH.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2E8F0'}};sH.alignment={vertical:'middle'};ws.getRow(3).height=24;ws.mergeCells('A4:D4');ws.getCell('A4').value='司機姓名';ws.mergeCells('E4:G4');ws.getCell('E4').value='本期累計總工時';ws.mergeCells('H4:K4');ws.getCell('H4').value='本期應發總薪金 (HKD)';const sR=ws.getRow(4);sR.height=22;sR.font={name:'Microsoft JhengHei',bold:true,color:{argb:'FF334155'}};sR.alignment={horizontal:'center',vertical:'middle'};['A4','B4','C4','D4','E4','F4','G4','H4','I4','J4','K4'].forEach(c=>{ws.getCell(c).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF1F5F9'}};ws.getCell(c).border=bS;});let si=5;for(const[name,th]of Object.entries(ss)){ws.mergeCells(`A${si}:D${si}`);ws.getCell(`A${si}`).value=`👤 ${name}`;ws.mergeCells(`E${si}:G${si}`);ws.getCell(`E${si}`).value=`${th} 小時`;ws.mergeCells(`H${si}:K${si}`);ws.getCell(`H${si}`).value=th*rate;ws.getCell(`H${si}`).numFmt='"HK$"#,##0';const r=ws.getRow(si);r.height=22;r.font={name:'Microsoft JhengHei',size:11};r.alignment={horizontal:'center',vertical:'middle'};ws.getCell(`H${si}`).font={bold:true,color:{argb:'FF059669'}};['A','B','C','D','E','F','G','H','I','J','K'].forEach(c=>{ws.getCell(`${c}${si}`).border=bS;});si++;}const rsr=si+2;const ht=['日期','星期','假期/備註','早更司機','早更時間','早更工時','夜更/全更司機','夜更/全更時間','夜更工時','當日總工時','當日總工資'];ht.forEach((t,i)=>{const c=ws.getCell(rsr,i+1);c.value=t;c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2A6F97'}};c.font={name:'Microsoft JhengHei',bold:true,color:{argb:'FFFFFFFF'}};c.alignment={horizontal:'center',vertical:'middle'};c.border=bS;});ws.getRow(rsr).height=25;let cri=rsr+1;fd.forEach(it=>{const r=ws.getRow(cri);r.height=22;r.values=[it.date,it.weekDayStr,it.holidayName||'',it.mDriver||'-',it.mTime||'-',it.mHours||0,it.nDriver||'-',it.nTime||'-',it.nHours||0,it.dailyHours,it.dailyWage];r.alignment={horizontal:'center',vertical:'middle'};r.font={name:'Microsoft JhengHei',size:10};ws.getCell(`K${cri}`).numFmt='"HK$"#,##0';ws.getCell(`K${cri}`).font={bold:true,color:{argb:'FF059669'}};if(it.isHoliday){['A','B','C','D','E','F','G','H','I','J','K'].forEach(c=>{ws.getCell(`${c}${cri}`).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFDE8E8'}};});ws.getCell(`C${cri}`).font={bold:true,color:{argb:'FF991B1B'}};}['A','B','C','D','E','F','G','H','I','J','K'].forEach(c=>{ws.getCell(`${c}${cri}`).border=bS;});cri++;});ws.mergeCells(`A${cri}:I${cri}`);const fl=ws.getCell(`A${cri}`);fl.value=`本 期 累 計 總 計 (${sd}號 至 ${ed}號)`;fl.font={name:'Microsoft JhengHei',bold:true,size:12,color:{argb:'FF1E293B'}};fl.alignment={horizontal:'center',vertical:'middle'};const fh=ws.getCell(`J${cri}`);fh.value=`${tsh} 小時`;fh.font={name:'Microsoft JhengHei',bold:true,size:11,color:{argb:'FF1E40AF'}};fh.alignment={horizontal:'center',vertical:'middle'};const fw=ws.getCell(`K${cri}`);fw.value=tsw;fw.numFmt='"HK$"#,##0';fw.font={name:'Microsoft JhengHei',bold:true,size:13,color:{argb:'FFDC2626'}};fw.alignment={horizontal:'center',vertical:'middle'};ws.getRow(cri).height=28;['A','B','C','D','E','F','G','H','I','J','K'].forEach(c=>{const cell=ws.getCell(`${c}${cri}`);cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFEF08A'}};cell.border={top:{style:'medium',color:{argb:'FF0F172A'}},bottom:{style:'double',color:{argb:'FF0F172A'}},left:{style:'thin',color:{argb:'FFCBD5E1'}},right:{style:'thin',color:{argb:'FFCBD5E1'}}};});const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const ct=tt.replace(/[\\/:*?"<>| ]/g,'_');saveAs(blob,`小巴排更表_${mv}_${ct}.xlsx`);}catch(err){console.error(err);alert('匯出失敗：'+err.message);}finally{hideLoading();bs.forEach(b=>b.disabled=false);}}
+</script>
+</body>
+</html>

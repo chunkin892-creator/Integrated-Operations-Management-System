@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>浚鍵管理有限公司 - 行車記錄表</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="shared.js"></script>
+<style>
+:root{--bg-body:#f4f6f9;--bg-card:#fff;--text-main:#2c3e50;--text-label:#596780;--text-title:#1e3a8a;--border:#e2e8f0;--border-light:#edf2f7;--th-bg:#f8fafc;--th-text:#334155;--summary-bg:#fef3c7;--month-summary-bg:#f3e8ff;--btn-add:#2563eb;--btn-export:#059669;--btn-search:#7c3aed;--btn-del-bg:#fee2e2;--btn-del-text:#991b1b;--tab-bg:#e2e8f0;--tab-text:#64748b;--tab-active:#2563eb;--cloud-ok:#059669;--cloud-err:#dc2626;--section-title:#2563eb;--shadow:rgba(0,0,0,.04);}
+[data-theme="dark"]{--bg-body:#0f172a;--bg-card:#1e293b;--text-main:#f1f5f9;--text-label:#94a3b8;--text-title:#60a5fa;--border:#334155;--border-light:#273548;--th-bg:#334155;--th-text:#f8fafc;--summary-bg:#451a03;--month-summary-bg:#3b0764;--btn-add:#3b82f6;--btn-export:#10b981;--btn-search:#8b5cf6;--btn-del-bg:#7f1d1d;--btn-del-text:#fecaca;--tab-bg:#334155;--tab-text:#94a3b8;--tab-active:#3b82f6;--cloud-ok:#34d399;--cloud-err:#f87171;--section-title:#60a5fa;--shadow:rgba(0,0,0,.4);}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+body{margin:0;padding:12px;background-color:var(--bg-body);color:var(--text-main);transition:background-color .3s,color .3s;}
+.card{background:var(--bg-card);padding:16px;border-radius:12px;box-shadow:0 4px 12px var(--shadow);margin-bottom:12px;border:1px solid var(--border);}
+h2{text-align:center;font-size:18px;margin:0 0 12px 0;color:var(--text-title);}
+label{display:block;font-size:13px;font-weight:bold;margin-top:8px;color:var(--text-label);}
+input,select,button{width:100%;padding:10px;margin-top:4px;border:1px solid var(--border);border-radius:8px;font-size:15px;background:var(--bg-card);color:var(--text-main);}
+input:focus,select:focus{outline:none;border-color:var(--tab-active);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.stepper-group{display:flex;align-items:center;gap:6px;margin-top:4px;}
+.stepper-btn{width:48px;height:48px;font-size:22px;font-weight:bold;background-color:var(--tab-bg);color:var(--text-main);border:1px solid var(--border);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;margin:0;}
+.stepper-btn:active{background-color:var(--tab-active);color:#fff;}
+.stepper-input{text-align:center;font-size:18px;font-weight:bold;height:48px;margin-top:0!important;}
+.row{display:flex;gap:8px;}.row>div{flex:1;}
+.btn-add{background-color:var(--btn-add);color:#fff;font-weight:bold;border:none;margin-top:14px;cursor:pointer;padding:12px;}
+.btn-search{background-color:var(--btn-search);color:#fff;font-weight:bold;border:none;margin-top:8px;cursor:pointer;padding:12px;}
+.btn-del{background-color:var(--btn-del-bg);color:var(--btn-del-text);border:none;padding:6px 10px;border-radius:4px;font-size:11px;width:auto;cursor:pointer;}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:11px;}
+th,td{border:1px solid var(--border-light);padding:8px 4px;text-align:center;}
+th{background-color:var(--th-bg);color:var(--th-text);}
+.summary{font-weight:bold;background-color:var(--summary-bg);font-size:13px;color:var(--text-main);border:1px solid rgba(245,158,11,.3);}
+.section-title{font-size:13px;color:var(--section-title);margin-top:12px;font-weight:bold;border-bottom:1px solid var(--border-light);padding-bottom:4px;}
+.nav-tabs{display:flex;gap:4px;margin-bottom:12px;}
+.nav-tabs button{flex:1;padding:10px;background:var(--tab-bg);border:none;font-weight:bold;color:var(--tab-text);cursor:pointer;border-radius:8px;}
+.nav-tabs button.active{background:var(--tab-active);color:#fff;}
+.tab-content{display:none;}.tab-content.active{display:block;}
+.cloud-status{font-size:11px;text-align:center;color:var(--cloud-ok);margin-top:-8px;margin-bottom:8px;font-weight:bold;}
+.cloud-status.error{color:var(--cloud-err);}
+.theme-toggle{position:fixed;top:10px;right:10px;width:auto;padding:8px 12px;font-size:18px;border-radius:50%;border:1px solid var(--border);background:var(--bg-card);color:var(--text-main);cursor:pointer;z-index:1000;box-shadow:0 2px 8px var(--shadow);}
+.luxury-section{border:2px solid var(--btn-search);border-radius:12px;padding:12px;margin-top:12px;background:rgba(124,58,237,.03);}
+.luxury-section h4{margin:0 0 8px 0;font-size:14px;color:var(--btn-search);}
+.luxury-buttons{display:flex;gap:6px;margin-top:8px;}
+.luxury-buttons button{flex:1;padding:12px 6px;font-size:12px;font-weight:bold;border:none;border-radius:8px;cursor:pointer;color:#fff;}
+.btn-luxury-1{background:linear-gradient(135deg,#3b82f6 0%,#1d4ed8 100%);}
+.btn-luxury-2{background:linear-gradient(135deg,#ec4899 0%,#be185d 100%);}
+.btn-luxury-3{background:linear-gradient(135deg,#06b6d4 0%,#0e7490 100%);}
+.auth-bar{display:flex;justify-content:space-between;align-items:center;background:var(--bg-card);padding:8px 12px;border-radius:8px;margin-bottom:12px;border:1px solid var(--border);font-size:12px;gap:8px;}
+.auth-bar .user-info{display:flex;align-items:center;gap:6px;color:var(--text-label);overflow:hidden;flex:1;min-width:0;}
+.auth-bar .user-info img{width:24px;height:24px;border-radius:50%;border:2px solid #d4af37;flex-shrink:0;}
+.auth-bar button{width:auto;padding:5px 12px;font-size:12px;margin:0;}
+.fuel-btn{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;border:none;padding:12px;border-radius:8px;font-weight:bold;cursor:pointer;margin-bottom:12px;font-size:14px;}
+</style>
+</head>
+<body>
+
+<div class="auth-bar" id="authBar">
+  <div class="user-info" id="authInfo"><span id="authText">🔒 未登入（只讀模式）</span></div>
+  <div style="display:flex;gap:6px;">
+    <button id="btnLogin" class="btn-add" style="margin:0;padding:5px 12px;font-size:12px;">登入</button>
+    <button id="btnLogout" style="display:none;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;">登出</button>
+  </div>
+</div>
+
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切換深色/淺色">🌙</button>
+<h2>浚鍵管理有限公司<br><small style="font-size:14px;font-weight:normal;opacity:0.8;">行車記錄表 (豪華版)</small></h2>
+
+<button class="fuel-btn" onclick="location.href='fuel-ocr.html'">⛽ 每日燃料費（拍收據 OCR）</button>
+
+<div class="cloud-status" id="cloudStatus">☁️ 雲端狀態：連線中...</div>
+
+<div class="nav-tabs">
+  <button id="tabBtn1" class="active" onclick="switchTab('tab1')">📝 日常輸入 / 班次記錄</button>
+  <button id="tabBtn2" onclick="switchTab('tab2')">🔍 月度歷史分析</button>
+</div>
+
+<div id="tab1" class="tab-content active">
+  <div class="card">
+    <label style="color:var(--section-title);">📅 選擇日期</label>
+    <input type="date" id="recordDate" onchange="switchDate()">
+    <div class="row"><div><label>車牌</label><input type="text" id="carPlate" placeholder="例如: AB1234" onchange="saveBasicInfo()"></div></div>
+    <div class="row"><div><label>司機姓名（自動記憶）</label><input type="text" id="driverName" placeholder="你的姓名" onchange="onDriverNameChange()"></div></div>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 8px 0;font-size:15px;">新增班次紀錄</h3>
+    <div class="row">
+      <div><label>更次選擇</label><select id="shiftType" onchange="onShiftChange()"><option value="早更">早更</option><option value="夜更">夜更</option><option value="特更">特更</option></select></div>
+      <div><label>目的地</label><select id="destination"></select></div>
+    </div>
+    <div class="row"><div><label>開出時間</label><input type="time" id="departTime"></div></div>
+    <div class="section-title">八達通 / 電子支付人次</div>
+    <div class="row">
+      <div><label>電子 $9</label><div class="stepper-group"><button type="button" class="stepper-btn" onclick="adjustCount('count9Elec',-1)">➖</button><input type="number" id="count9Elec" value="0" min="0" class="stepper-input" inputmode="numeric"><button type="button" class="stepper-btn" onclick="adjustCount('count9Elec',1)">➕</button></div></div>
+      <div><label>電子 $6</label><div class="stepper-group"><button type="button" class="stepper-btn" onclick="adjustCount('count6Elec',-1)">➖</button><input type="number" id="count6Elec" value="0" min="0" class="stepper-input" inputmode="numeric"><button type="button" class="stepper-btn" onclick="adjustCount('count6Elec',1)">➕</button></div></div>
+    </div>
+    <div class="section-title">現金支付人次</div>
+    <div class="row">
+      <div><label>現金 $9</label><div class="stepper-group"><button type="button" class="stepper-btn" onclick="adjustCount('count9Cash',-1)">➖</button><input type="number" id="count9Cash" value="0" min="0" class="stepper-input" inputmode="numeric"><button type="button" class="stepper-btn" onclick="adjustCount('count9Cash',1)">➕</button></div></div>
+      <div><label>現金 $6</label><div class="stepper-group"><button type="button" class="stepper-btn" onclick="adjustCount('count6Cash',-1)">➖</button><input type="number" id="count6Cash" value="0" min="0" class="stepper-input" inputmode="numeric"><button type="button" class="stepper-btn" onclick="adjustCount('count6Cash',1)">➕</button></div></div>
+    </div>
+    <button class="btn-add" onclick="addTrip()">＋ 加入並同步至雲端</button>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 8px 0;font-size:15px;">當日班次明細 (雲端同步)</h3>
+    <div style="overflow-x:auto;">
+      <table><thead><tr><th>更次</th><th>司機</th><th>時間</th><th>方向</th><th>電$9</th><th>電$6</th><th>現$9</th><th>現$6</th><th>小計</th><th>操作</th></tr></thead>
+      <tbody id="tripBody"></tbody></table>
+    </div>
+    <div id="totalSummary" class="summary" style="padding:10px;margin-top:10px;border-radius:6px;">當日總收入：$0</div>
+  </div>
+</div>
+
+<div id="tab2" class="tab-content">
+  <div class="card">
+    <h3 style="margin:0 0 8px 0;font-size:15px;color:var(--btn-search);">🔍 雲端月度數據檢索</h3>
+    <div class="row">
+      <div><label>選擇月份</label><input type="month" id="searchMonth"></div>
+      <div><label>過濾更次</label><select id="searchShift"><option value="ALL">全部更次</option><option value="早更">單獨看：早更</option><option value="夜更">單獨看：夜更</option><option value="特更">單獨看：特更</option></select></div>
+    </div>
+    <button class="btn-search" onclick="analyzeMonth()">🔎 查詢雲端數據</button>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 8px 0;font-size:15px;">月度分析結果</h3>
+    <div style="overflow-x:auto;">
+      <table><thead><tr><th>日期</th><th>更次</th><th>司機</th><th>班次數</th><th>電$9</th><th>電$6</th><th>現$9</th><th>現$6</th><th>收入小計</th></tr></thead>
+      <tbody id="monthBody"><tr><td colspan="9">請選擇月份並按下「查詢」</td></tr></tbody></table>
+    </div>
+    <div id="monthSummary" style="font-weight:bold;background-color:var(--month-summary-bg);font-size:13px;color:var(--text-main);padding:10px;margin-top:10px;border-radius:6px;border:1px solid rgba(147,51,234,.3);">月度總結：請先進行查詢</div>
+    <div class="luxury-section">
+      <h4>💎 豪華版 Excel 報表匯出 (A4 自動分頁)</h4>
+      <p style="font-size:11px;color:var(--text-label);margin:4px 0;">包含大型標題、統計摘要及自動排版，一鍵列印最方便</p>
+      <label>自定開始日期</label><input type="date" id="luxStartDate">
+      <label>自定結束日期</label><input type="date" id="luxEndDate">
+      <div class="luxury-buttons">
+        <button class="btn-luxury-1" onclick="exportLuxuryExcel('firstHalf')">上半個月<br><small>1–15 號</small></button>
+        <button class="btn-luxury-2" onclick="exportLuxuryExcel('secondHalf')">下半個月<br><small>16–月底</small></button>
+        <button class="btn-luxury-3" onclick="exportLuxuryExcel('custom')">自定日期<br><small>自選範圍</small></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig={apiKey:"AIzaSyANWLqV5bIFfMX_-byunnEBQ-gZmSn1cj4",authDomain:"driver-s-shift-report.firebaseapp.com",databaseURL:"https://driver-s-shift-report-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"driver-s-shift-report",storageBucket:"driver-s-shift-report.firebasestorage.app",messagingSenderId:"790331468274",appId:"1:790331468274:web:a0cecd6a8d5f8e157ba36b",measurementId:"G-JZSZKCSS27"};
+if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+const db=firebase.database();const auth=firebase.auth();
+let currentUser=null;
+function updateAuthUI(user){currentUser=user;const bl=document.getElementById('btnLogin'),bo=document.getElementById('btnLogout'),ai=document.getElementById('authInfo');if(user){bl.style.display='none';bo.style.display='block';ai.innerHTML=`${user.photoURL?`<img src="${user.photoURL}">`:''}<span>👤 ${user.displayName||user.email}</span>`;}else{bl.style.display='block';bo.style.display='none';ai.innerHTML='<span>🔒 未登入（只讀模式）</span>';}}
+document.getElementById('btnLogin').addEventListener('click',()=>{const p=new firebase.auth.GoogleAuthProvider();auth.signInWithPopup(p).catch(e=>alert('登入失敗：'+e.message));});
+document.getElementById('btnLogout').addEventListener('click',()=>{if(confirm('確定要登出？'))auth.signOut();});
+auth.onAuthStateChanged(updateAuthUI);
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);const b=document.getElementById('themeToggle');if(b)b.textContent=t==='dark'?'☀️':'🌙';try{localStorage.setItem('theme',t);}catch(e){}}
+function toggleTheme(){const c=document.documentElement.getAttribute('data-theme')||'light';applyTheme(c==='dark'?'light':'dark');}
+(function(){let t='light';try{t=localStorage.getItem('theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}catch(e){}applyTheme(t);})();
+const DESTINATIONS=["去 西鐵元朗站","去 大棠/黃泥墩"];const PRICE_9=9,PRICE_6=6;
+let currentDate="",currentDayData={plate:"",driver:"",trips:[]},activeListener=null,activeListenerDate="";
+function adjustCount(id,amt){const el=document.getElementById(id);if(!el)return;let v=parseInt(el.value,10)||0;v=Math.max(0,v+amt);el.value=v;}
+function escapeHtml(s){if(s===null||s===undefined)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function setDefaultTime(){const n=new Date();document.getElementById('departTime').value=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
+document.addEventListener('DOMContentLoaded',function(){
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('recordDate').value=today;
+  document.getElementById('searchMonth').value=today.substring(0,7);
+  document.getElementById('luxStartDate').value=today.substring(0,7)+'-01';
+  document.getElementById('luxEndDate').value=today;
+  const ds=document.getElementById('destination');
+  DESTINATIONS.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d;ds.appendChild(o);});
+  const sd=localStorage.getItem('rememberedDest');if(sd&&DESTINATIONS.includes(sd))ds.value=sd;
+  const ss=localStorage.getItem('rememberedShift')||'早更';document.getElementById('shiftType').value=ss;
+  loadDriverNameForCurrentShift();setDefaultTime();
+  db.ref('.info/connected').on('value',snap=>{const el=document.getElementById('cloudStatus');if(!el)return;if(snap.val()===true){el.classList.remove('error');el.textContent="☁️ 雲端狀態：已連線至 driver-s-shift-report";}else{el.classList.add('error');el.textContent="⚠️ 雲端狀態：離線中，請檢查網絡";}});
+  switchDate();
+  ds.addEventListener('change',function(){localStorage.setItem('rememberedDest',this.value);});
+});
+function loadDriverNameForCurrentShift(){const sh=document.getElementById('shiftType').value;const n=localStorage.getItem('driver_name_'+sh)||'';document.getElementById('driverName').value=n;currentDayData.driver=n;}
+function onShiftChange(){const sh=document.getElementById('shiftType').value;localStorage.setItem('rememberedShift',sh);loadDriverNameForCurrentShift();saveBasicInfo();}
+function onDriverNameChange(){const sh=document.getElementById('shiftType').value;const n=document.getElementById('driverName').value.trim();localStorage.setItem('driver_name_'+sh,n);saveBasicInfo();}
+function switchTab(id){document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.nav-tabs button').forEach(e=>e.classList.remove('active'));document.getElementById(id).classList.add('active');if(id==='tab1')document.getElementById('tabBtn1').classList.add('active');if(id==='tab2')document.getElementById('tabBtn2').classList.add('active');}
+function switchDate(){
+  const nd=document.getElementById('recordDate').value;if(!nd)return;
+  if(nd===activeListenerDate&&activeListener)return;
+  if(activeListener&&activeListenerDate)db.ref('records/'+activeListenerDate).off('value',activeListener);
+  currentDate=nd;activeListenerDate=nd;
+  const st=document.getElementById('cloudStatus');st.textContent="☁️ 雲端狀態：資料同步中...";
+  activeListener=db.ref('records/'+currentDate).on('value',snap=>{
+    const d=snap.val();
+    if(d){currentDayData={plate:d.plate||'',driver:d.driver||localStorage.getItem('driver_name_'+document.getElementById('shiftType').value)||'',trips:normalizeTrips(d.trips)};}
+    else{currentDayData={plate:'',driver:localStorage.getItem('driver_name_'+document.getElementById('shiftType').value)||'',trips:[]};}
+    document.getElementById('carPlate').value=currentDayData.plate;
+    document.getElementById('driverName').value=currentDayData.driver;
+    renderTable();
+  },err=>{console.error(err);st.classList.add('error');st.textContent="⚠️ 雲端狀態：連線受阻";});
+}
+function normalizeTrips(raw){if(!raw)return[];if(Array.isArray(raw))return raw.filter(Boolean).map((t,i)=>({...t,id:t.id||('legacy_'+i)}));return Object.keys(raw).map(k=>({...raw[k],id:k}));}
+function saveBasicInfo(){if(!currentDate)return;currentDayData.plate=document.getElementById('carPlate').value.trim();currentDayData.driver=document.getElementById('driverName').value.trim();db.ref('records/'+currentDate).update({plate:currentDayData.plate,driver:currentDayData.driver}).catch(e=>alert('儲存基本資料失敗：'+e.message));}
+function addTrip(){
+  if(!currentUser){alert('請先登入再新增班次');return;}
+  if(!currentDate)return;
+  const shift=document.getElementById('shiftType').value,dest=document.getElementById('destination').value,time=document.getElementById('departTime').value,driver=document.getElementById('driverName').value.trim();
+  const c9e=Math.max(0,parseInt(document.getElementById('count9Elec').value,10)||0),c6e=Math.max(0,parseInt(document.getElementById('count6Elec').value,10)||0),c9c=Math.max(0,parseInt(document.getElementById('count9Cash').value,10)||0),c6c=Math.max(0,parseInt(document.getElementById('count6Cash').value,10)||0);
+  if(!time){alert('請選擇開出時間！');return;}if(!driver){alert('請輸入司機姓名！');return;}
+  const et=(c9e*PRICE_9)+(c6e*PRICE_6),ct=(c9c*PRICE_9)+(c6c*PRICE_6);
+  const trip={shift,driver,dest,time,c9Elec:c9e,c6Elec:c6e,c9Cash:c9c,c6Cash:c6c,elecTotal:et,cashTotal:ct,total:et+ct,createdAt:Date.now()};
+  const r=db.ref('records/'+currentDate+'/trips').push();trip.id=r.key;
+  r.set(trip).then(()=>{['count9Elec','count6Elec','count9Cash','count6Cash'].forEach(id=>document.getElementById(id).value='0');setDefaultTime();}).catch(e=>alert('新增班次失敗：'+e.message));
+}
+function deleteTrip(id){if(!currentUser){alert('請先登入再刪除');return;}if(!id||!currentDate)return;if(confirm('確定要刪除此班次紀錄嗎？'))db.ref('records/'+currentDate+'/trips/'+id).remove().catch(e=>alert('刪除失敗：'+e.message));}
+function renderTable(){
+  const tb=document.getElementById('tripBody');if(!tb)return;
+  const rows=[];let gt=0,tt=0,s9e=0,s6e=0,s9c=0,s6c=0;
+  currentDayData.trips.forEach(t=>{gt+=t.total||0;tt++;s9e+=t.c9Elec||0;s6e+=t.c6Elec||0;s9c+=t.c9Cash||0;s6c+=t.c6Cash||0;
+    rows.push(`<tr><td>${escapeHtml(t.shift)}</td><td>${escapeHtml(t.driver||currentDayData.driver||'-')}</td><td>${escapeHtml(t.time)}</td><td>${escapeHtml((t.dest||'').replace('去 ',''))}</td><td>${t.c9Elec||0}</td><td>${t.c6Elec||0}</td><td>${t.c9Cash||0}</td><td>${t.c6Cash||0}</td><td>$${t.total||0}</td><td><button class="btn-del" onclick="deleteTrip('${escapeHtml(t.id)}')">刪除</button></td></tr>`);});
+  tb.innerHTML=rows.length>0?rows.join(''):'<tr><td colspan="10">當日暫無班次紀錄</td></tr>';
+  document.getElementById('totalSummary').innerHTML=`<strong>【${currentDate}】當日總收入：$${gt}</strong><br><small>總班次：${tt} 班 | 電$9: ${s9e} | 電$6: ${s6e} | 現$9: ${s9c} | 現$6: ${s6c}</small>`;
+}
+function analyzeMonth(){
+  const tm=document.getElementById('searchMonth').value,ts=document.getElementById('searchShift').value;
+  if(!tm){alert('請選擇要查詢的月份');return;}
+  const[y,m]=tm.split('-').map(Number);const ld=new Date(y,m,0).getDate();
+  db.ref('records').orderByKey().startAt(tm+'-01').endAt(tm+'-'+String(ld).padStart(2,'0')+'\uf8ff').once('value').then(snap=>{
+    const all=snap.val()||{},mb=document.getElementById('monthBody'),rows=[];
+    let mc=0,mr=0,m9e=0,m6e=0,m9c=0,m6c=0;
+    const dates=Object.keys(all).sort();
+    if(dates.length===0){mb.innerHTML=`<tr><td colspan="9">【${tm}】無任何雲端紀錄</td></tr>`;document.getElementById('monthSummary').innerHTML='月度總結：該月份無資料';return;}
+    dates.forEach(d=>{const dd=all[d];if(!dd)return;const trips=normalizeTrips(dd.trips);const ft=trips.filter(t=>ts==='ALL'||t.shift===ts);
+      if(ft.length>0){let dr=0,d9e=0,d6e=0,d9c=0,d6c=0;ft.forEach(t=>{dr+=t.total||0;d9e+=t.c9Elec||0;d6e+=t.c6Elec||0;d9c+=t.c9Cash||0;d6c+=t.c6Cash||0;});
+        mc+=ft.length;mr+=dr;m9e+=d9e;m6e+=d6e;m9c+=d9c;m6c+=d6c;
+        const dn=ft[0]?.driver||dd.driver||'-';
+        rows.push(`<tr><td>${escapeHtml(d)}</td><td>${escapeHtml(ts==='ALL'?'混合':ts)}</td><td>${escapeHtml(dn)}</td><td>${ft.length}</td><td>${d9e}</td><td>${d6e}</td><td>${d9c}</td><td>${d6c}</td><td><strong>$${dr}</strong></td></tr>`);}});
+    mb.innerHTML=rows.length>0?rows.join(''):`<tr><td colspan="9">【${tm}】無符合條件的紀錄</td></tr>`;
+    document.getElementById('monthSummary').innerHTML=`<strong>【${tm} (${ts})】雲端總結：</strong><br>總班次：${mc} 班 | 總收入：$${mr}<br><small>八達通/電子：$9 人次: ${m9e} | $6 人次: ${m6e}</small><br><small>現金：$9 人次: ${m9c} | $6 人次: ${m6c}</small>`;
+  }).catch(e=>alert('查詢失敗：'+e.message));
+}
+function getDateRange(mode){
+  const t=new Date(),y=t.getFullYear(),m=t.getMonth(),ms=String(m+1).padStart(2,'0');
+  if(mode==='firstHalf')return{start:`${y}-${ms}-01`,end:`${y}-${ms}-15`,label:`${y}年${m+1}月 上半個月 (1–15號)`};
+  if(mode==='secondHalf'){const ld=new Date(y,m+1,0).getDate();return{start:`${y}-${ms}-16`,end:`${y}-${ms}-${String(ld).padStart(2,'0')}`,label:`${y}年${m+1}月 下半個月 (16–${ld}號)`};}
+  const s=document.getElementById('luxStartDate').value,e=document.getElementById('luxEndDate').value;
+  if(!s||!e){alert('請選擇自定開始同結束日期');return null;}
+  if(s>e){alert('開始日期唔可以遲過結束日期');return null;}
+  return{start:s,end:e,label:`自定範圍：${s} 至 ${e}`};
+}
+async function exportLuxuryExcel(mode){
+  const range=getDateRange(mode);if(!range)return;
+  if(typeof ExcelJS==='undefined'){alert('ExcelJS 庫未載入成功');return;}
+  try{
+    const snap=await db.ref('records').orderByKey().startAt(range.start).endAt(range.end+'\uf8ff').once('value');
+    const all=snap.val()||{},dates=Object.keys(all).sort();
+    if(dates.length===0){alert(`【${range.label}】無任何紀錄可匯出`);return;}
+    const wb=new ExcelJS.Workbook();wb.creator='浚鍵管理有限公司 - 行車記錄表';wb.created=new Date();
+    const cs=wb.addWorksheet('封面摘要',{properties:{defaultRowHeight:22},pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:1},views:[{showGridLines:true}]});
+    cs.columns=[{width:22},{width:22},{width:22},{width:22},{width:22},{width:22}];
+    cs.mergeCells('A1:F1');const tc=cs.getCell('A1');tc.value='浚鍵管理有限公司';tc.font={name:'微軟正黑體',size:24,bold:true,color:{argb:'FFFFFFFF'}};tc.alignment={horizontal:'center',vertical:'middle'};tc.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A8A'}};cs.getRow(1).height=45;
+    cs.mergeCells('A2:F2');const sc=cs.getCell('A2');sc.value='行車記錄報表';sc.font={name:'微軟正黑體',size:16,bold:true,color:{argb:'FF2563EB'}};sc.alignment={horizontal:'center',vertical:'middle'};cs.getRow(2).height=30;
+    cs.mergeCells('A3:F3');const rc=cs.getCell('A3');rc.value=range.label;rc.font={name:'微軟正黑體',size:13,bold:true,color:{argb:'FF475569'}};rc.alignment={horizontal:'center',vertical:'middle'};cs.getRow(3).height=25;
+    let tTrips=0,tRev=0,s9E=0,s6E=0,s9C=0,s6C=0,dc=0;
+    dates.forEach(d=>{const day=all[d];if(!day)return;const trips=normalizeTrips(day.trips);if(trips.length>0){dc++;trips.forEach(t=>{tTrips++;tRev+=t.total||0;s9E+=t.c9Elec||0;s6E+=t.c6Elec||0;s9C+=t.c9Cash||0;s6C+=t.c6Cash||0;});}});
+    const stats=[['報表生成時間',new Date().toLocaleString('zh-HK'),'涵蓋日數',`${dc} 日`],['總班次',`${tTrips} 班`,'總收入',`HK$ ${tRev.toLocaleString()}`],['電子 $9 人次',`${s9E} 人次`,'電子 $6 人次',`${s6E} 人次`],['現金 $9 人次',`${s9C} 人次`,'現金 $6 人次',`${s6C} 人次`]];
+    let ri=5;stats.forEach(([l1,v1,l2,v2])=>{cs.mergeCells(`A${ri}:B${ri}`);const c1=cs.getCell(`A${ri}`);c1.value=l1;c1.font={name:'微軟正黑體',size:11,bold:true,color:{argb:'FF334155'}};c1.alignment={horizontal:'left',vertical:'middle'};c1.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF1F5F9'}};
+      cs.mergeCells(`C${ri}:C${ri}`);const c2=cs.getCell(`C${ri}`);c2.value=v1;c2.font={name:'微軟正黑體',size:11,color:{argb:'FF0F172A'}};c2.alignment={horizontal:'left',vertical:'middle'};
+      cs.mergeCells(`D${ri}:E${ri}`);const c3=cs.getCell(`D${ri}`);c3.value=l2;c3.font={name:'微軟正黑體',size:11,bold:true,color:{argb:'FF334155'}};c3.alignment={horizontal:'left',vertical:'middle'};c3.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF1F5F9'}};
+      cs.mergeCells(`F${ri}:F${ri}`);const c4=cs.getCell(`F${ri}`);c4.value=v2;c4.font={name:'微軟正黑體',size:11,color:{argb:'FF0F172A'}};c4.alignment={horizontal:'left',vertical:'middle'};cs.getRow(ri).height=28;ri++;});
+    const ds=wb.addWorksheet('班次明細',{pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0},views:[{state:'frozen',ySplit:1,showGridLines:true}]});
+    ds.columns=[{header:'日期',key:'date',width:12},{header:'車牌',key:'plate',width:10},{header:'更次',key:'shift',width:8},{header:'司機',key:'driver',width:12},{header:'開出時間',key:'time',width:10},{header:'目的地',key:'dest',width:18},{header:'電$9',key:'c9e',width:8},{header:'電$6',key:'c6e',width:8},{header:'現$9',key:'c9c',width:8},{header:'現$6',key:'c6c',width:8},{header:'小計(HKD)',key:'total',width:12}];
+    const hr=ds.getRow(1);hr.height=30;hr.eachCell(c=>{c.font={name:'微軟正黑體',size:12,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2563EB'}};c.alignment={horizontal:'center',vertical:'middle'};});
+    dates.forEach(d=>{const day=all[d];if(!day)return;normalizeTrips(day.trips).forEach(t=>{ds.addRow({date:d,plate:day.plate||'-',shift:t.shift,driver:t.driver||day.driver||'-',time:t.time,dest:t.dest,c9e:t.c9Elec||0,c6e:t.c6Elec||0,c9c:t.c9Cash||0,c6c:t.c6Cash||0,total:t.total||0});});});
+    const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`豪華行車報表_${range.start}_至_${range.end}.xlsx`;document.body.appendChild(link);link.click();document.body.removeChild(link);setTimeout(()=>URL.revokeObjectURL(url),5000);
+  }catch(e){alert('豪華版 Excel 匯出失敗：'+e.message);}
+}
+</script>
+</body>
+</html>

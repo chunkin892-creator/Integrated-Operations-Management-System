@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+<title>浚鍵管理有限公司 - 司機考勤與薪資系統</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script>
+(function(){var cdns=['https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js','https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js','https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js'];var idx=0;function loadNext(){if(idx>=cdns.length)return;var s=document.createElement('script');s.src=cdns[idx++];s.onload=function(){};s.onerror=function(){s.remove();loadNext();};document.head.appendChild(s);}loadNext();})();
+</script>
+<script src="shared.js"></script>
+<style>
+:root{--primary:#1e3a8a;--primary-light:#2563eb;--primary-dark:#1e2a5a;--gold:#d4af37;--gold-light:#f0d97a;--gold-dark:#a8891f;--bg:#f1f5f9;--card-bg:#fff;--input-bg:#fff;--text:#1e293b;--text-title:#1e3a8a;--text-label:#475569;--text-muted:#94a3b8;--border:#cbd5e1;--border-light:#e2e8f0;--table-header:#1e3a8a;--table-header-text:#fff;--summary-bg:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);--summary-text:#fff;--shadow:rgba(30,58,138,.08);--shadow-lg:rgba(30,58,138,.15);--success:#059669;--error:#dc2626;--warning:#d97706;--overlay-bg:rgba(15,23,42,.6);--gradient-primary:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);--gradient-gold:linear-gradient(135deg,#d4af37 0%,#f0d97a 100%);}
+[data-theme="dark"]{--primary:#3b82f6;--primary-light:#60a5fa;--primary-dark:#1e40af;--gold:#f0d97a;--gold-light:#fef3c7;--gold-dark:#d4af37;--bg:#0f172a;--card-bg:#1e293b;--input-bg:#334155;--text:#e2e8f0;--text-title:#93c5fd;--text-label:#cbd5e1;--text-muted:#94a3b8;--border:#475569;--border-light:#334155;--table-header:#1e40af;--table-header-text:#fff;--summary-bg:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);--summary-text:#fff;--shadow:rgba(0,0,0,.3);--shadow-lg:rgba(0,0,0,.5);--success:#10b981;--error:#ef4444;--warning:#f59e0b;--overlay-bg:rgba(0,0,0,.8);}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft JhengHei",sans-serif;}
+body{margin:0;padding:10px;background:var(--bg);color:var(--text);transition:background .3s,color .3s;min-height:100vh;}
+.card{background:var(--card-bg);padding:16px;border-radius:14px;box-shadow:0 4px 16px var(--shadow);margin-bottom:14px;border:1px solid var(--border-light);}
+.header-section{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;margin-bottom:6px;text-align:center;}
+.title-area{width:100%;text-align:center;}
+h2{text-align:center;font-size:26px;margin:0 0 6px 0;font-weight:900;letter-spacing:1px;background:var(--gradient-primary);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:var(--primary);line-height:1.25;}
+h2 small{font-size:15px;font-weight:800;display:block;margin-top:6px;letter-spacing:1.5px;background:var(--gradient-primary);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.sub-title{text-align:center;font-size:13px;color:var(--gold-dark);margin:4px 0 0 0;font-weight:bold;}
+.top-controls{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;}
+label{display:block;font-size:13px;font-weight:700;margin-top:8px;color:var(--text-label);}
+input,select,button{width:100%;padding:10px 12px;margin-top:4px;border:1.5px solid var(--border);border-radius:10px;font-size:15px;background:var(--input-bg);color:var(--text);}
+input:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(30,58,138,.15);}
+.row{display:flex;gap:8px;flex-wrap:wrap;}.row>div{flex:1;min-width:100px;}
+.btn-save{background:var(--gradient-primary);color:#fff;font-weight:700;border:none;margin-top:12px;padding:12px;font-size:15px;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px var(--shadow-lg);}
+.btn-save:disabled{opacity:.6;cursor:not-allowed;}
+.btn-copy,.btn-copy-yesterday,.btn-clear{color:#fff;font-weight:700;border:none;margin-top:4px;font-size:13px;padding:10px;border-radius:10px;cursor:pointer;}
+.btn-copy{background:linear-gradient(135deg,#7c3aed 0%,#a78bfa 100%);}
+.btn-copy-yesterday{background:linear-gradient(135deg,#0891b2 0%,#22d3ee 100%);}
+.btn-clear{background:linear-gradient(135deg,#64748b 0%,#94a3b8 100%);}
+.btn-export{background:var(--gradient-gold);color:#1e3a8a;font-weight:800;border:none;margin-top:10px;padding:13px;font-size:15px;border-radius:10px;cursor:pointer;box-shadow:0 4px 12px rgba(212,175,55,.3);}
+.btn-export:disabled{opacity:.6;cursor:not-allowed;}
+.btn-del{background:#fee2e2;color:#991b1b;border:none;padding:5px 9px;border-radius:6px;font-size:12px;cursor:pointer;width:auto;font-weight:700;}
+.btn-edit{background:#dbeafe;color:#1e40af;border:none;padding:5px 9px;border-radius:6px;font-size:12px;cursor:pointer;width:auto;font-weight:700;}
+.btn-nav{background:var(--card-bg);color:var(--primary);border:1.5px solid var(--border);padding:8px 12px;border-radius:8px;font-size:14px;font-weight:800;flex:1;cursor:pointer;}
+.btn-mode{background:var(--border-light);color:var(--text-label);font-weight:700;border:none;padding:10px;border-radius:10px;font-size:14px;cursor:pointer;flex:1;}
+.btn-mode.active{background:var(--gradient-primary);color:#fff;box-shadow:0 4px 12px var(--shadow-lg);}
+.btn-search{background:linear-gradient(135deg,#7c3aed 0%,#a78bfa 100%);color:#fff;font-weight:700;border:none;margin-top:8px;padding:12px;font-size:15px;border-radius:10px;cursor:pointer;}
+.btn-refresh{background:linear-gradient(135deg,#059669 0%,#10b981 100%);color:#fff;font-weight:700;border:none;margin-top:6px;font-size:13px;padding:9px;border-radius:8px;cursor:pointer;}
+.btn-theme{background:transparent;border:2px solid var(--border);font-size:20px;cursor:pointer;width:auto;padding:6px 10px;border-radius:50%;}
+.btn-login{background:var(--gradient-primary);color:#fff;font-weight:700;border:none;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;width:auto;box-shadow:0 4px 12px var(--shadow-lg);}
+.btn-logout{background:linear-gradient(135deg,#dc2626 0%,#ef4444 100%);color:#fff;font-weight:700;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;width:auto;}
+.user-info{display:flex;align-items:center;gap:8px;font-size:13px;}
+.user-avatar{width:32px;height:32px;border-radius:50%;border:2px solid var(--gold);}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:11px;}
+th,td{border:1px solid var(--border-light);padding:7px 3px;text-align:center;}
+th{background:var(--table-header);color:var(--table-header-text);font-weight:700;font-size:11px;}
+tbody tr:nth-child(even){background:var(--bg);}
+.summary{font-weight:700;background:var(--summary-bg);color:var(--summary-text);font-size:13px;padding:12px;border-radius:10px;margin-top:10px;text-align:center;box-shadow:0 4px 12px var(--shadow-lg);}
+.cloud-status{font-size:12px;text-align:center;color:var(--success);margin:-4px 0 10px 0;font-weight:700;padding:6px;border-radius:6px;}
+.cloud-status.error{color:var(--error);}
+.hidden{display:none;}
+.range-selector{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;}
+.range-selector button{flex:1;padding:8px;background:var(--border-light);border:none;font-weight:700;border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-label);}
+.range-selector button.active{background:var(--gradient-primary);color:#fff;}
+.salary-highlight{color:var(--gold-dark);font-weight:800;}
+.table-wrap{overflow-x:auto;border-radius:8px;}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}.btn-group button{flex:1;margin-top:0;}
+.mode-indicator{text-align:center;font-size:14px;font-weight:800;padding:10px;border-radius:10px;margin-bottom:10px;}
+.mode-indicator.edit{background:var(--gradient-primary);color:#fff;box-shadow:0 4px 12px var(--shadow-lg);}
+.mode-indicator.view{background:linear-gradient(135deg,#7c3aed 0%,#a78bfa 100%);color:#fff;}
+.nav-date{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.nav-date input{flex:3;}.nav-date button{flex:1;}
+.loading-overlay{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:9999;justify-content:center;align-items:center;flex-direction:column;color:#fff;backdrop-filter:blur(4px);}
+.loading-overlay.active{display:flex;}
+.loading-spinner{width:52px;height:52px;border:5px solid rgba(255,255,255,.2);border-top-color:var(--gold);border-radius:50%;animation:spin .9s linear infinite;margin-bottom:16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:15px;font-weight:700;}
+.export-section{margin-top:14px;border-top:2px solid var(--border-light);padding-top:12px;}
+.export-section h4{margin:0 0 8px 0;font-size:14px;color:var(--text-title);font-weight:800;}
+.month-year-picker{display:flex;gap:8px;margin-top:4px;}.month-year-picker select{flex:1;}
+@media (max-width:480px){.row>div{min-width:100%;}th,td{font-size:10px;padding:4px 1px;}h2{font-size:20px;}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div><div class="loading-text" id="loadingText">處理中...</div></div>
+
+<div class="header-section">
+  <div class="title-area">
+    <h2>浚鍵管理有限公司<small>📋 司機考勤與薪資系統</small></h2>
+    <div class="sub-title">🔄 自動更新 · 連線失敗會自動重試</div>
+  </div>
+  <div class="top-controls">
+    <button class="btn-theme" id="themeToggle" onclick="toggleTheme()">🌙</button>
+    <div id="authSection">
+      <button class="btn-login" id="loginBtn" onclick="loginWithGoogle()">🔑 Google 登入</button>
+      <div id="userInfo" class="user-info hidden">
+        <img id="userAvatar" class="user-avatar" src="" alt="avatar">
+        <span id="userName"></span>
+        <button class="btn-logout" onclick="logout()">登出</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="cloud-status" id="cloudStatus">☁️ 狀態：連線中...</div>
+
+<div class="card">
+  <div class="row" style="margin-bottom:8px;">
+    <div><button class="btn-mode active" id="modeEditBtn" onclick="setMode('edit')">✏️ 補錄</button></div>
+    <div><button class="btn-mode" id="modeViewBtn" onclick="setMode('view')">🔍 查閱</button></div>
+  </div>
+  <div id="modeIndicator" class="mode-indicator edit">✏️ 補錄模式</div>
+
+  <div id="editSection">
+    <label>📅 日期</label>
+    <div class="nav-date">
+      <button class="btn-nav" onclick="changeDate(-1)">◀</button>
+      <input type="date" id="recordDate" onchange="switchDate()">
+      <button class="btn-nav" onclick="changeDate(1)">▶</button>
+    </div>
+    <button class="btn-refresh" onclick="forceRefresh()">🔄 手動重新整理</button>
+    <div class="row">
+      <div><label>👤 司機</label><input type="text" id="driverName" placeholder="姓名"></div>
+      <div><label>🔄 更次</label><select id="shiftType"><option value="早更">早更</option><option value="夜更">夜更</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>⏰ 報到</label><input type="time" id="checkInTime"></div>
+      <div><label>⏰ 簽退</label><input type="time" id="checkOutTime"></div>
+    </div>
+    <div class="row">
+      <div><label>📝 備註</label><input type="text" id="remark" placeholder="可選"></div>
+      <div><label>💰 時薪</label><input type="number" id="hourlyRate" value="75" step="0.5" min="1"></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn-copy-yesterday" onclick="copyYesterday()">📋 複製前一日</button>
+      <button class="btn-copy" onclick="copyLastRecord()">📋 複製上一個</button>
+      <button class="btn-clear" onclick="clearForm()">🗑️ 清空</button>
+    </div>
+    <button class="btn-save" id="saveBtn" onclick="saveRecord()">💾 補錄 / 更新</button>
+  </div>
+
+  <div id="viewSection" class="hidden">
+    <div style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);padding:10px;border-radius:10px;margin-bottom:10px;text-align:center;color:#1e3a8a;font-weight:700;">🔍 查閱記錄</div>
+    <div class="row">
+      <div><label>👤 司機</label><input type="text" id="viewDriverName" placeholder="全部"></div>
+      <div><label>🔄 更次</label><select id="viewShiftFilter"><option value="ALL">全部</option><option value="早更">早更</option><option value="夜更">夜更</option></select></div>
+    </div>
+    <label>📅 日期範圍</label>
+    <div class="range-selector">
+      <button id="vRangeDay" class="active" onclick="setViewRange('day')">單日</button>
+      <button id="vRangeMonth" onclick="setViewRange('month')">月度</button>
+      <button id="vRangeYear" onclick="setViewRange('year')">年度</button>
+    </div>
+    <div id="vDayInput"><input type="date" id="viewDayDate"></div>
+    <div id="vMonthInput" class="hidden"><input type="month" id="viewMonthDate"></div>
+    <div id="vYearInput" class="hidden"><input type="number" id="viewYearDate" placeholder="2026"></div>
+    <button class="btn-search" onclick="viewQuery()">🔎 查詢</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 8px 0;font-size:15px;color:var(--text-title);">📋 記錄</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>日期</th><th>更次</th><th>司機</th><th>報到</th><th>簽退</th><th>時數</th><th>人工</th><th>備註</th><th>操作</th></tr></thead>
+      <tbody id="recordBody"><tr><td colspan="9">暫無記錄</td></tr></tbody>
+    </table>
+  </div>
+  <div id="daySummary" class="summary">總記錄：0 | 總工時：0h | 總人工：HK$0</div>
+
+  <div class="export-section">
+    <h4>📊 匯出豪華 Excel</h4>
+    <div class="row">
+      <div>
+        <label>範圍類型</label>
+        <select id="exportRange" onchange="toggleExportDate()">
+          <option value="week">本週 (週一至日)</option>
+          <option value="half1">上半月 (1-15)</option>
+          <option value="half2">下半月 (16-月底)</option>
+          <option value="month">全月</option>
+          <option value="custom">自訂日期</option>
+        </select>
+      </div>
+    </div>
+    <div id="exportMonthYearDiv">
+      <label>📅 選擇年月</label>
+      <div class="month-year-picker">
+        <select id="exportYear"></select>
+        <select id="exportMonth"><option value="01">1月</option><option value="02">2月</option><option value="03">3月</option><option value="04">4月</option><option value="05">5月</option><option value="06">6月</option><option value="07">7月</option><option value="08">8月</option><option value="09">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option></select>
+      </div>
+    </div>
+    <div id="exportDateRange" class="hidden">
+      <label>開始</label><input type="date" id="exportStartDate">
+      <label>結束</label><input type="date" id="exportEndDate">
+    </div>
+    <button class="btn-export" onclick="exportDeluxeExcel()">📊 匯出豪華 Excel</button>
+  </div>
+</div>
+
+<script>
+const firebaseConfig={apiKey:"AIzaSyANWLqV5bIFfMX_-byunnEBQ-gZmSn1cj4",authDomain:"driver-s-shift-report.firebaseapp.com",databaseURL:"https://driver-s-shift-report-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"driver-s-shift-report",storageBucket:"driver-s-shift-report.firebasestorage.app",messagingSenderId:"790331468274",appId:"1:790331468274:web:a0cecd6a8d5f8e157ba36b",measurementId:"G-JZSZKCSS27"};
+let db=null,auth=null;
+try{if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);db=firebase.database();auth=firebase.auth();}catch(err){console.error('Firebase 初始化失敗：',err);document.addEventListener('DOMContentLoaded',()=>{const s=document.getElementById('cloudStatus');if(s){s.classList.add('error');s.textContent='⚠️ Firebase 初始化失敗，請檢查設定';}});}
+const MAX_RETRY=5;let retryCount=0;
+let currentDate='',currentDayData={},lastRecord=null,editingKey=null,currentMode='edit',viewRange='day',viewResult=[],hourlyRate=75,listenerRef=null,isListening=false;
+function $(id){return document.getElementById(id);}
+function today(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function formatLocal(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function showStatus(msg,err=false){const el=$('cloudStatus');if(!el)return;el.textContent=msg;el.className='cloud-status'+(err?' error':'');}
+function makeKey(driver,shift){return driver+'_'+shift;}
+function escapeHtml(str){if(str===null||str===undefined)return'';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function safeGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function safeSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function showLoading(t){const el=$('loadingOverlay');if(!el)return;$('loadingText').textContent=t||'處理中...';el.classList.add('active');}
+function hideLoading(){const el=$('loadingOverlay');if(el)el.classList.remove('active');}
+function calcHours(checkIn,checkOut){if(!checkIn||!checkOut)return{hours:0,salary:0};const[h1,m1]=checkIn.split(':').map(Number);const[h2,m2]=checkOut.split(':').map(Number);let diff=(h2*60+m2)-(h1*60+m1);if(diff<0)diff+=1440;const hours=Math.round((diff/60)*10)/10;const salary=Math.round(hours*hourlyRate*100)/100;return{hours,salary};}
+function toggleTheme(){const h=document.documentElement;const n=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',n);$('themeToggle').textContent=n==='dark'?'☀️':'🌙';safeSet('theme',n);}
+function loadTheme(){const s=safeGet('theme')||'light';document.documentElement.setAttribute('data-theme',s);const b=$('themeToggle');if(b)b.textContent=s==='dark'?'☀️':'🌙';}
+function loginWithGoogle(){if(!auth){alert('Firebase Auth 未初始化');return;}const p=new firebase.auth.GoogleAuthProvider();auth.signInWithPopup(p).catch(e=>alert('登入失敗: '+e.message));}
+function logout(){if(auth)auth.signOut();}
+function updateAuthUI(user){const lb=$('loginBtn');const ui=$('userInfo');if(!lb||!ui)return;if(user){lb.classList.add('hidden');ui.classList.remove('hidden');$('userAvatar').src=user.photoURL||'';$('userName').textContent=user.displayName||user.email;}else{lb.classList.remove('hidden');ui.classList.add('hidden');}}
+function setMode(mode){currentMode=mode;$('modeEditBtn').classList.toggle('active',mode==='edit');$('modeViewBtn').classList.toggle('active',mode==='view');$('editSection').classList.toggle('hidden',mode!=='edit');$('viewSection').classList.toggle('hidden',mode!=='view');const ind=$('modeIndicator');if(mode==='edit'){ind.className='mode-indicator edit';ind.innerText='✏️ 補錄模式 (自動更新)';switchDate();}else{ind.className='mode-indicator view';ind.innerText='🔍 查閱模式';stopListening();}editingKey=null;$('saveBtn').textContent='💾 補錄此記錄';}
+function startListening(date){if(!db)return;stopListening();if(!date)return;currentDate=date;retryCount=0;showStatus('☁️ 連線中...');const ref=db.ref('attendance/'+date);listenerRef=ref;isListening=true;ref.on('value',(snapshot)=>{if(!isListening)return;const data=snapshot.val();currentDayData=data||{};retryCount=0;renderTable(currentDayData);showStatus('☁️ 已連線 · 自動更新中');},(error)=>{showStatus('⚠️ 連線中斷: '+error.message,true);if(retryCount<MAX_RETRY){retryCount++;setTimeout(()=>{if(isListening){showStatus(`☁️ 重新連線中... (${retryCount}/${MAX_RETRY})`);startListening(currentDate);}},5000);}else{showStatus('⚠️ 已達最大重試次數，請檢查 Firebase Rules 或網絡',true);}});}
+function stopListening(){if(listenerRef){listenerRef.off('value');listenerRef=null;}isListening=false;}
+function switchDate(){const date=$('recordDate').value;if(!date)return;currentDate=date;startListening(date);}
+function forceRefresh(){if(currentDate){retryCount=0;startListening(currentDate);}else{switchDate();}}
+function changeDate(delta){const d=new Date($('recordDate').value);d.setDate(d.getDate()+delta);$('recordDate').value=formatLocal(d);switchDate();}
+function copyYesterday(){if(!db)return;if(currentMode!=='edit'){alert('請轉補錄模式');return;}const driver=$('driverName').value.trim();if(!driver){alert('請輸入司機姓名');return;}const d=new Date(currentDate);d.setDate(d.getDate()-1);const yest=formatLocal(d);db.ref('attendance/'+yest).once('value').then(snap=>{const data=snap.val();if(!data){alert('前一日無記錄');return;}let shifts=[];Object.keys(data).forEach(k=>{if(data[k].driverName===driver)shifts.push(data[k].shift);});if(!shifts.length){alert('前一日冇 '+driver+' 嘅記錄');return;}let sel=shifts[0];if(shifts.length>1){const choice=prompt(`佢有 ${shifts.join('、')}，請輸入要複製嘅更次：`,shifts[0]);if(choice&&shifts.includes(choice))sel=choice;}$('shiftType').value=sel;alert('已複製更次為「'+sel+'」');$('checkInTime').focus();}).catch(err=>alert('錯誤: '+err.message));}
+function copyLastRecord(){if(currentMode!=='edit'){alert('請轉補錄模式');return;}if(!lastRecord){alert('未有記錄可複製');return;}if($('driverName').value.trim()&&!confirm('覆蓋當前司機？'))return;$('driverName').value=lastRecord.driverName;$('shiftType').value=lastRecord.shift;$('checkInTime').focus();}
+function clearForm(){$('driverName').value='';$('checkInTime').value='';$('checkOutTime').value='';$('remark').value='';editingKey=null;$('saveBtn').textContent='💾 補錄此記錄';$('driverName').focus();}
+function saveRecord(){if(!db)return;if(currentMode!=='edit'){alert('請轉補錄模式');return;}const driver=$('driverName').value.trim();const shift=$('shiftType').value;const checkIn=$('checkInTime').value;const checkOut=$('checkOutTime').value;const remark=$('remark').value.trim();if(!driver){alert('請輸入司機姓名');return;}if(!checkIn){alert('請輸入報到時間');return;}if(!checkOut){alert('請輸入簽退時間');return;}const{hours,salary}=calcHours(checkIn,checkOut);if(hours===0){alert('工時為0，請檢查時間');return;}const key=makeKey(driver,shift);if(editingKey!==key&&currentDayData[key]){if(!confirm('記錄已存在，要覆蓋嗎？'))return;}const record={driverName:driver,shift,checkIn,checkOut,hours,salary,remark};const ref=db.ref('attendance/'+currentDate+'/'+key);const btn=$('saveBtn');btn.disabled=true;btn.textContent='⏳ 儲存中...';ref.set(record).then(()=>{lastRecord={driverName:driver,shift};$('checkInTime').value='';$('checkOutTime').value='';$('remark').value='';editingKey=null;showStatus('✅ 儲存成功！');}).catch(err=>{alert('儲存失敗: '+err.message);showStatus('⚠️ 儲存失敗',true);}).finally(()=>{btn.disabled=false;btn.textContent='💾 補錄此記錄';});}
+function deleteRecord(key){if(!db)return;if(!confirm('刪除 '+key+' ？'))return;db.ref('attendance/'+currentDate+'/'+key).remove().catch(err=>alert('刪除失敗: '+err.message));}
+function editRecord(key){if(currentMode!=='edit'){alert('請轉補錄模式');return;}const r=currentDayData[key];if(!r){alert('記錄不存在');return;}$('driverName').value=r.driverName;$('shiftType').value=r.shift;$('checkInTime').value=r.checkIn||'';$('checkOutTime').value=r.checkOut||'';$('remark').value=r.remark||'';editingKey=key;$('saveBtn').textContent='🔄 更新記錄';$('editSection').scrollIntoView({behavior:'smooth'});}
+function renderTable(data){const tbody=$('recordBody');const keys=Object.keys(data||{});let html='';if(!keys.length){html='<tr><td colspan="9">暫無記錄</td></tr>';}else{let totalHours=0,totalSalary=0;keys.forEach(k=>{const r=data[k];totalHours+=r.hours||0;totalSalary+=r.salary||0;const safeKey=escapeHtml(k);html+=`<tr><td>${escapeHtml(currentDate)}</td><td>${escapeHtml(r.shift)}</td><td><strong>${escapeHtml(r.driverName)}</strong></td><td>${escapeHtml(r.checkIn||'-')}</td><td>${escapeHtml(r.checkOut||'-')}</td><td>${r.hours?r.hours+'h':'-'}</td><td class="salary-highlight">${r.salary?'HK$'+r.salary.toFixed(2):'-'}</td><td>${escapeHtml(r.remark||'')}</td><td><button class="btn-edit" onclick="editRecord('${safeKey}')">✏️</button><button class="btn-del" onclick="deleteRecord('${safeKey}')">🗑️</button></td></tr>`;});$('daySummary').innerHTML=`<strong>總記錄：${keys.length} 條 | 總工時：${totalHours.toFixed(1)}h | 總人工：HK$${totalSalary.toFixed(2)}</strong>`;}tbody.innerHTML=html;}
+function setViewRange(range){viewRange=range;document.querySelectorAll('.range-selector button').forEach(b=>b.classList.remove('active'));document.getElementById('vRange'+range.charAt(0).toUpperCase()+range.slice(1)).classList.add('active');$('vDayInput').classList.toggle('hidden',range!=='day');$('vMonthInput').classList.toggle('hidden',range!=='month');$('vYearInput').classList.toggle('hidden',range!=='year');}
+function viewQuery(){if(!db)return;const driver=$('viewDriverName').value.trim();const shiftFilter=$('viewShiftFilter').value;let start,end;if(viewRange==='day'){const d=$('viewDayDate').value;if(!d){alert('請選擇日期');return;}start=end=d;}else if(viewRange==='month'){const m=$('viewMonthDate').value;if(!m){alert('請選擇月份');return;}start=m+'-01';const last=new Date(parseInt(m.split('-')[0]),parseInt(m.split('-')[1]),0).getDate();end=m+'-'+String(last).padStart(2,'0');}else{const y=$('viewYearDate').value;if(!y){alert('請輸入年份');return;}start=y+'-01-01';end=y+'-12-31';}showStatus('☁️ 查詢中...');showLoading('正在查詢...');db.ref('attendance').orderByKey().startAt(start).endAt(end+'\uf8ff').once('value').then(snap=>{const all=snap.val()||{};const dates=Object.keys(all).sort();const results=[];dates.forEach(d=>{const day=all[d];Object.keys(day).forEach(k=>{const r=day[k];if(driver&&r.driverName!==driver)return;if(shiftFilter!=='ALL'&&r.shift!==shiftFilter)return;results.push({date:d,key:k,shift:r.shift,driverName:r.driverName,checkIn:r.checkIn||'-',checkOut:r.checkOut||'-',hours:r.hours||0,salary:r.salary||0,remark:r.remark||''});});});viewResult=results;let html='';if(!results.length){html=`<tr><td colspan="9">無符合記錄</td></tr>`;$('daySummary').innerHTML='查詢結果：無資料';}else{let th=0,ts=0;results.forEach(r=>{th+=r.hours;ts+=r.salary;const safeDate=escapeHtml(r.date);const safeKey=escapeHtml(r.key);html+=`<tr><td>${safeDate}</td><td>${escapeHtml(r.shift)}</td><td><strong>${escapeHtml(r.driverName)}</strong></td><td>${escapeHtml(r.checkIn)}</td><td>${escapeHtml(r.checkOut)}</td><td>${r.hours?r.hours+'h':'-'}</td><td class="salary-highlight">${r.salary?'HK$'+r.salary.toFixed(2):'-'}</td><td>${escapeHtml(r.remark)}</td><td><button class="btn-del" onclick="viewDeleteRecord('${safeDate}','${safeKey}')">刪除</button></td></tr>`;});const display=escapeHtml(driver||'所有司機');$('daySummary').innerHTML=`<strong>${escapeHtml(start)} 至 ${escapeHtml(end)}</strong> 司機：${display} | 記錄：${results.length} | 工時：${th.toFixed(1)}h | 人工：HK$${ts.toFixed(2)}`;}$('recordBody').innerHTML=html;showStatus('✅ 查詢完成');}).catch(err=>{alert('查詢失敗: '+err.message);showStatus('⚠️ 查詢失敗',true);}).finally(()=>hideLoading());}
+function viewDeleteRecord(date,key){if(!db)return;if(!confirm('刪除 '+key+' ？'))return;db.ref('attendance/'+date+'/'+key).remove().then(()=>viewQuery()).catch(err=>alert('刪除失敗: '+err.message));}
+function toggleExportDate(){const val=$('exportRange').value;$('exportDateRange').classList.toggle('hidden',val!=='custom');$('exportMonthYearDiv').classList.toggle('hidden',val==='custom'||val==='week');}
+function getExportDateRange(){const range=$('exportRange').value;let start,end;if(range==='custom'){const s=$('exportStartDate').value;const e=$('exportEndDate').value;if(!s||!e){alert('請選擇自訂日期範圍');return null;}if(s>e){alert('開始日期唔可以遲過結束日期');return null;}return{start:s,end:e};}if(range==='week'){const today=new Date();const day=today.getDay();const diff=today.getDate()-day+(day===0?-6:1);const startD=new Date(today.getFullYear(),today.getMonth(),diff);const endD=new Date(startD);endD.setDate(startD.getDate()+6);return{start:formatLocal(startD),end:formatLocal(endD)};}const year=parseInt($('exportYear').value);const month=parseInt($('exportMonth').value);if(!year||!month){alert('請選擇年月');return null;}if(range==='half1'){start=`${year}-${String(month).padStart(2,'0')}-01`;end=`${year}-${String(month).padStart(2,'0')}-15`;}else if(range==='half2'){const lastDay=new Date(year,month,0).getDate();start=`${year}-${String(month).padStart(2,'0')}-16`;end=`${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;}else if(range==='month'){const lastDay=new Date(year,month,0).getDate();start=`${year}-${String(month).padStart(2,'0')}-01`;end=`${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;}return{start,end};}
+async function exportDeluxeExcel(){if(!db)return;const range=getExportDateRange();if(!range)return;const{start,end}=range;if(typeof ExcelJS==='undefined'){alert('ExcelJS 庫未載入成功，請檢查網絡連線後重試。');return;}const buttons=document.querySelectorAll('.btn-export');buttons.forEach(b=>b.disabled=true);showStatus('☁️ 讀取資料中...');showLoading('正在讀取資料...');try{const snap=await db.ref('attendance').orderByKey().startAt(start).endAt(end+'\uf8ff').once('value');const all=snap.val()||{};const dates=Object.keys(all).sort();if(!dates.length){alert('所選範圍內無任何記錄！');showStatus('⚠️ 無資料',true);return;}const records=[];dates.forEach(date=>{const dayData=all[date];Object.keys(dayData).forEach(key=>{const r=dayData[key];records.push({date,shift:r.shift,driverName:r.driverName,checkIn:r.checkIn||'-',checkOut:r.checkOut||'-',hours:r.hours||0,salary:r.salary||0,remark:r.remark||''});});});let totalHours=0,totalSalary=0;const driverSummary={};records.forEach(r=>{totalHours+=r.hours;totalSalary+=r.salary;if(!driverSummary[r.driverName])driverSummary[r.driverName]={hours:0,salary:0};driverSummary[r.driverName].hours+=r.hours;driverSummary[r.driverName].salary+=r.salary;});showLoading('正在建立 Excel...');const workbook=new ExcelJS.Workbook();workbook.creator='浚鍵管理有限公司';workbook.created=new Date();
+const ws1=workbook.addWorksheet('財務摘要',{views:[{state:'frozen',ySplit:5}]});
+const titleRow=ws1.addRow(['浚鍵管理有限公司 - 工時與薪資總表']);ws1.mergeCells(`A${titleRow.number}:F${titleRow.number}`);const titleCell=titleRow.getCell(1);titleCell.font={size:20,bold:true,color:{argb:'FFFFFFFF'}};titleCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A8A'}};titleCell.alignment={horizontal:'center',vertical:'middle'};ws1.getRow(titleRow.number).height=45;
+const periodRow=ws1.addRow([`統計週期：${start} 至 ${end}`]);ws1.mergeCells(`A${periodRow.number}:F${periodRow.number}`);periodRow.getCell(1).font={size:13,bold:true,color:{argb:'FF1E3A8A'}};periodRow.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F4FF'}};periodRow.getCell(1).alignment={horizontal:'center',vertical:'middle'};ws1.getRow(periodRow.number).height=28;ws1.addRow([]);
+const infoHeader=ws1.addRow(['總記錄數','總工時 (h)','總薪資 (HKD)']);infoHeader.eachCell(cell=>{cell.font={bold:true,size:12,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A8A'}};cell.alignment={horizontal:'center',vertical:'middle'};cell.border={top:{style:'medium'},left:{style:'thin'},bottom:{style:'medium'},right:{style:'thin'}};});infoHeader.height=28;
+const infoRow=ws1.addRow([records.length,totalHours.toFixed(1),totalSalary.toFixed(2)]);infoRow.eachCell(cell=>{cell.alignment={horizontal:'center',vertical:'middle'};cell.font={bold:true,size:12,color:{argb:'FF1E3A8A'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F4FF'}};cell.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};});infoRow.height=28;ws1.addRow([]);ws1.addRow([]);
+const sumHeader=ws1.addRow(['司機','總工時 (h)','總薪資 (HKD)']);sumHeader.eachCell(cell=>{cell.font={bold:true,size:12,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD4AF37'}};cell.alignment={horizontal:'center',vertical:'middle'};cell.border={top:{style:'medium'},left:{style:'thin'},bottom:{style:'medium'},right:{style:'thin'}};});sumHeader.height=28;
+Object.keys(driverSummary).sort().forEach((name,idx)=>{const d=driverSummary[name];const row=ws1.addRow([name,d.hours.toFixed(1),d.salary.toFixed(2)]);const isEven=idx%2===0;row.eachCell(cell=>{cell.alignment={horizontal:'center',vertical:'middle'};cell.font={size:11,color:{argb:'FF1E293B'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:isEven?'FFF8FAFC':'FFFFFFFF'}};cell.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};});});
+ws1.getColumn(1).width=20;ws1.getColumn(2).width=18;ws1.getColumn(3).width=20;
+const ws2=workbook.addWorksheet('明細表',{views:[{state:'frozen',ySplit:1}]});const headers=['日期','更次','司機','報到','簽退','時數 (h)','薪資 (HKD)','備註'];const headerRow2=ws2.addRow(headers);headerRow2.eachCell(cell=>{cell.font={bold:true,size:12,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A8A'}};cell.alignment={horizontal:'center',vertical:'middle'};cell.border={top:{style:'medium'},left:{style:'thin'},bottom:{style:'medium'},right:{style:'thin'}};});ws2.getRow(headerRow2.number).height=30;
+records.forEach((r,idx)=>{const row=ws2.addRow([r.date,r.shift,r.driverName,r.checkIn,r.checkOut,r.hours,r.salary,r.remark]);const isEven=idx%2===0;row.eachCell((cell,col)=>{cell.alignment={horizontal:col===6?'right':'left',vertical:'middle'};cell.font={size:11,color:{argb:'FF1E293B'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:isEven?'FFF8FAFC':'FFFFFFFF'}};cell.border={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};if(col===6)cell.font={size:11,bold:true,color:{argb:'FFD4AF37'}};});});
+ws2.getColumn(1).width=14;ws2.getColumn(2).width=10;ws2.getColumn(3).width=14;ws2.getColumn(4).width=12;ws2.getColumn(5).width=12;ws2.getColumn(6).width=12;ws2.getColumn(7).width=16;ws2.getColumn(8).width=24;
+const buffer=await workbook.xlsx.writeBuffer();const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const link=document.createElement('a');const url=URL.createObjectURL(blob);link.href=url;link.download=`工時報表_${start}_至_${end}.xlsx`;document.body.appendChild(link);link.click();document.body.removeChild(link);setTimeout(()=>URL.revokeObjectURL(url),5000);showStatus('✅ 豪華 Excel 匯出成功！');}catch(err){console.error(err);alert('匯出失敗: '+err.message);showStatus('⚠️ 匯出失敗',true);}finally{hideLoading();buttons.forEach(b=>b.disabled=false);}}
+window.onload=function(){loadTheme();if(!db){showStatus('⚠️ Firebase 初始化失敗',true);return;}const todayStr=today();$('recordDate').value=todayStr;$('viewDayDate').value=todayStr;$('viewMonthDate').value=todayStr.substring(0,7);$('viewYearDate').value=todayStr.substring(0,4);const currentYear=new Date().getFullYear();const yearSelect=$('exportYear');for(let y=currentYear-5;y<=currentYear+2;y++){const opt=document.createElement('option');opt.value=y;opt.textContent=y+'年';if(y===currentYear)opt.selected=true;yearSelect.appendChild(opt);}$('exportMonth').value=String(new Date().getMonth()+1).padStart(2,'0');const savedRate=safeGet('hourlyRate_backfill');if(savedRate){const v=parseFloat(savedRate);if(!isNaN(v)&&v>0)hourlyRate=v;}$('hourlyRate').value=hourlyRate;const savedShift=safeGet('rememberedShift_backfill')||'早更';$('shiftType').value=savedShift;$('hourlyRate').addEventListener('change',function(){const v=parseFloat(this.value);if(!isNaN(v)&&v>0){hourlyRate=v;safeSet('hourlyRate_backfill',String(v));}});$('shiftType').addEventListener('change',function(){safeSet('rememberedShift_backfill',this.value);});if(auth){auth.onAuthStateChanged(user=>updateAuthUI(user),err=>console.error('Auth 錯誤：',err));}setMode('edit');const now=new Date();const firstDay=new Date(now.getFullYear(),now.getMonth(),1);const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0);$('exportStartDate').value=formatLocal(firstDay);$('exportEndDate').value=formatLocal(lastDay);toggleExportDate();};
+</script>
+</body>
+</html>
