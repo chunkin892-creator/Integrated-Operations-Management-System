@@ -1,0 +1,233 @@
+!DOCTYPE html
+html lang=zh-HK
+head
+meta charset=UTF-8
+meta name=viewport content=width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no
+title浚鍵管理有限公司 - 綜合營運管理系統title
+script src=httpswww.gstatic.comfirebasejs9.23.0firebase-app-compat.jsscript
+script src=httpswww.gstatic.comfirebasejs9.23.0firebase-auth-compat.jsscript
+script src=httpswww.gstatic.comfirebasejs9.23.0firebase-database-compat.jsscript
+script src=shared.jsscript
+style
+root{
+  --bg#f1f5f9;--card#fff;--text#0f172a;--sub#64748b;
+  --border#cbd5e1;--border-l#e2e8f0;
+  --primary#1e3a8a;--primary-l#2563eb;--gold#d4af37;--gold-d#a8891f;
+  --ok#059669;--err#dc2626;
+  --shadowrgba(15,23,42,.08);
+}
+[data-theme=dark]{
+  --bg#0f172a;--card#1e293b;--text#f8fafc;--sub#94a3b8;
+  --border#334155;--border-l#273548;
+  --primary#3b82f6;--primary-l#60a5fa;--gold#f0d97a;--gold-d#d4af37;
+  --ok#10b981;--err#ef4444;
+  --shadowrgba(0,0,0,.4);
+}
+{box-sizingborder-box;font-family-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Microsoft JhengHei,sans-serif;}
+body{margin0;padding16px;backgroundvar(--bg);colorvar(--text);font-size15px;min-height100vh;transitionbackground .3s,color .3s;}
+
+.header{text-aligncenter;margin-bottom24px;padding24px 16px;backgroundlinear-gradient(135deg,#1e3a8a,#2563eb);color#fff;border-radius18px;box-shadow0 10px 24px -6px rgba(37,99,235,.4);}
+.header h1{font-size24px;margin0 0 6px 0;letter-spacing1.5px;font-weight800;}
+.header p{font-size14px;margin0;opacity.92;letter-spacing.5px;}
+.header .sub{font-size12px;margin-top8px;opacity.75;}
+
+.top-bar{displayflex;justify-contentspace-between;align-itemscenter;backgroundvar(--card);padding10px 14px;border-radius12px;margin-bottom16px;border1px solid var(--border-l);box-shadow0 2px 8px var(--shadow);gap8px;flex-wrapwrap;}
+.user-info{displayflex;align-itemscenter;gap8px;font-size13px;colorvar(--sub);flex1;min-width0;overflowhidden;}
+.user-info img{width30px;height30px;border-radius50%;border2px solid var(--gold);flex-shrink0;}
+.user-info span{white-spacenowrap;overflowhidden;text-overflowellipsis;}
+.actions{displayflex;gap6px;align-itemscenter;flex-shrink0;}
+.btn-sm{padding6px 12px;font-size12px;border-radius8px;bordernone;font-weight700;cursorpointer;widthauto;margin0;}
+.btn-login{backgroundlinear-gradient(135deg,#1e3a8a,#2563eb);color#fff;}
+.btn-logout{backgroundlinear-gradient(135deg,#dc2626,#ef4444);color#fff;}
+.btn-theme{width36px;height36px;padding0;border-radius50%;border2px solid var(--gold);backgroundvar(--card);colorvar(--text);font-size16px;cursorpointer;displayflex;align-itemscenter;justify-contentcenter;}
+
+.cloud-status{text-aligncenter;font-size12px;font-weight700;padding8px;border-radius8px;margin-bottom16px;backgroundvar(--card);border1px solid var(--border-l);}
+.cloud-status.ok{colorvar(--ok);}
+.cloud-status.err{colorvar(--err);}
+
+.section-title{font-size14px;font-weight800;colorvar(--sub);margin20px 0 10px 4px;letter-spacing1px;text-transformuppercase;}
+
+.grid{displaygrid;grid-template-columnsrepeat(auto-fill,minmax(160px,1fr));gap12px;}
+@media(max-width520px){.grid{grid-template-columns1fr 1fr;}}
+
+.nav-card{backgroundvar(--card);border1px solid var(--border-l);border-radius14px;padding18px 14px;text-decorationnone;colorvar(--text);displayflex;flex-directioncolumn;align-itemscenter;justify-contentcenter;gap10px;text-aligncenter;box-shadow0 3px 10px var(--shadow);transitiontransform .15s,box-shadow .2s,border-color .2s;cursorpointer;positionrelative;overflowhidden;min-height140px;}
+.nav-cardhover{transformtranslateY(-3px);box-shadow0 8px 20px var(--shadow);border-colorvar(--primary-l);}
+.nav-cardactive{transformtranslateY(0);}
+.nav-card .icon{font-size34px;line-height1;}
+.nav-card .name{font-size15px;font-weight800;letter-spacing.5px;}
+.nav-card .desc{font-size11px;colorvar(--sub);line-height1.4;}
+
+.nav-card.income{border-top4px solid #059669;}
+.nav-card.roster{border-top4px solid #2563eb;}
+.nav-card.attendance{border-top4px solid #7c3aed;}
+.nav-card.backfill{border-top4px solid #0891b2;}
+.nav-card.finance{border-top4px solid #d97706;}
+.nav-card.fuel{border-top4px solid #f59e0b;}
+.nav-card.tracking{border-top4px solid #ec4899;}
+
+.footer{text-aligncenter;font-size11px;colorvar(--sub);margin-top30px;padding16px;line-height1.6;}
+
+.login-screen{displaynone;positionfixed;inset0;backgroundvar(--bg);z-index9999;flex-directioncolumn;align-itemscenter;justify-contentcenter;padding24px;text-aligncenter;}
+.login-screen.active{displayflex;}
+.login-screen .login-card{backgroundvar(--card);padding36px 26px;border-radius18px;box-shadow0 10px 30px var(--shadow);max-width380px;width100%;border1px solid var(--border-l);}
+.login-screen h2{font-size22px;margin0 0 8px 0;backgroundlinear-gradient(135deg,#1e3a8a,#2563eb);-webkit-background-cliptext;background-cliptext;-webkit-text-fill-colortransparent;}
+.login-screen p{colorvar(--sub);font-size13px;margin0 0 22px 0;}
+.btn-google{displayflex;align-itemscenter;justify-contentcenter;gap10px;background#4285f4;color#fff;padding14px;bordernone;border-radius10px;font-size15px;font-weight700;cursorpointer;width100%;}
+
+.app-content{displaynone;}
+.app-content.active{displayblock;}
+style
+head
+body
+
+!-- 登入畫面 --
+div class=login-screen active id=loginScreen
+  div class=login-card
+    h2浚鍵管理有限公司h2
+    p綜合營運管理系統p
+    p style=font-size12px;行車收入 · 月曆排更 · 司機考勤 · 財務秘書 · 即時追蹤p
+    button class=btn-google id=btnGoogleLogin
+      svg width=20 height=20 viewBox=0 0 48 48
+        path fill=#FFC107 d=M43.6 20.1H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34.1 6 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.9z
+        path fill=#FF3D00 d=M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z
+        path fill=#4CAF50 d=M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z
+        path fill=#1976D2 d=M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.7-.4-3.9z
+      svg
+      使用 Google 帳號登入
+    button
+    p style=font-size11px;margin-top16px;colorvar(--sub);請使用公司授權嘅 Google 帳號p
+  div
+div
+
+!-- 主內容 --
+div class=app-content id=appContent
+
+  div class=header
+    h1浚鍵管理有限公司h1
+    p綜合營運管理系統p
+    div class=sub行車收入 · 月曆排更 · 司機考勤 · 財務秘書 · 即時追蹤div
+  div
+
+  div class=top-bar
+    div class=user-info
+      img id=userAvatar src= alt= style=displaynone;
+      span id=userName載入中...span
+    div
+    div class=actions
+      button class=btn-theme id=themeToggle onclick=toggleSharedTheme()🌙button
+      button class=btn-sm btn-logout onclick=sharedLogout()登出button
+    div
+  div
+
+  div class=cloud-status ok id=cloudStatus☁️ 連線中...div
+
+  div class=section-title📊 日常營運div
+  div class=grid
+    a class=nav-card income href=index (8).html
+      div class=icon💰div
+      div class=name行車收入div
+      div class=desc班次記錄 · 八達通現金 · 月度分析div
+    a
+
+    a class=nav-card fuel href=fuel-ocr.html
+      div class=icon⛽div
+      div class=name燃料費 OCRdiv
+      div class=desc影收據 · 自動辨識 · 存入系統div
+    a
+  div
+
+  div class=section-title👨‍✈️ 司機管理div
+  div class=grid
+    a class=nav-card roster href=index (7).html
+      div class=icon📅div
+      div class=name月曆排更div
+      div class=desc更表設定 · 薪酬匯總 · Excel 匯出div
+    a
+
+    a class=nav-card attendance href=index (6).html
+      div class=icon⏰div
+      div class=name即時考勤div
+      div class=desc報到 · 簽退 · 自動計工時div
+    a
+
+    a class=nav-card backfill href=index (5).html
+      div class=icon✏️div
+      div class=name補錄查閱div
+      div class=desc補錄 · 查閱 · 修改記錄div
+    a
+  div
+
+  div class=section-title💼 財務管理div
+  div class=grid
+    a class=nav-card finance href=index (4).html
+      div class=icon📊div
+      div class=name財務秘書div
+      div class=desc收支 · 出糧名冊 · 損益表div
+    a
+  div
+
+  div class=section-title🚐 即時追蹤div
+  div class=grid
+    a class=nav-card tracking href=index (9).html
+      div class=icon📡div
+      div class=name西鐵小巴追蹤div
+      div class=descGPS 報站 · 對講機 · 乘客訊息div
+    a
+  div
+
+  div class=footer
+    div© 浚鍵管理有限公司div
+    div style=margin-top4px;綜合營運管理系統 v1.0div
+  div
+
+div
+
+script
+const firebaseConfig={
+  apiKeyAIzaSyANWLqV5bIFfMX_-byunnEBQ-gZmSn1cj4,
+  authDomaindriver-s-shift-report.firebaseapp.com,
+  databaseURLhttpsdriver-s-shift-report-default-rtdb.asia-southeast1.firebasedatabase.app,
+  projectIddriver-s-shift-report,
+  storageBucketdriver-s-shift-report.firebasestorage.app,
+  messagingSenderId790331468274,
+  appId1790331468274weba0cecd6a8d5f8e157ba36b,
+  measurementIdG-JZSZKCSS27
+};
+if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth();
+const db=firebase.database();
+
+document.getElementById('btnGoogleLogin').addEventListener('click',()={
+  const p=new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(p).catch(e=alert('登入失敗：'+e.message));
+});
+
+auth.onAuthStateChanged(user={
+  const loginScreen=document.getElementById('loginScreen');
+  const appContent=document.getElementById('appContent');
+  if(user){
+    loginScreen.classList.remove('active');
+    appContent.classList.add('active');
+    document.getElementById('userName').textContent=user.displayNameuser.email'已登入';
+    const av=document.getElementById('userAvatar');
+    if(user.photoURL){av.src=user.photoURL;av.style.display='block';}
+    else{av.style.display='none';}
+  }else{
+    loginScreen.classList.add('active');
+    appContent.classList.remove('active');
+  }
+});
+
+db.ref('.infoconnected').on('value',snap={
+  const el=document.getElementById('cloudStatus');
+  if(snap.val()===true){
+    el.className='cloud-status ok';
+    el.textContent='☁️ 已連線 · 資料實時同步';
+  }else{
+    el.className='cloud-status err';
+    el.textContent='⚠️ 離線中，請檢查網絡';
+  }
+});
+script
+body
+html
